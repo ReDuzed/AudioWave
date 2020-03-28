@@ -31,13 +31,17 @@ namespace AudioWave
         public static MainWindow Instance;
         internal Wave wave;
         internal SideWindow side;
+        internal AuxWindow aux;
         public MainWindow()
         {
             InitializeComponent();
+            wave.defaultOutput = new MMDeviceEnumerator().GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
             Instance = this;
             wave = new Wave();
             side = new SideWindow();
             side.Show();
+            aux = new AuxWindow();
+            aux.Show();
         }
 
         private void On_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -53,17 +57,20 @@ namespace AudioWave
         private float[] data;
         private MainWindow Window;
         internal WasapiOut audioOut;
+        public MMDevice defaultOutput;
+        public MMDevice defaultInput;
+        public static WasapiCapture capture;
         public Wave()
         {
             Window = MainWindow.Instance;
             Display();
         }
-        public void Init(string file)
+        public void Init(string file, MMDevice output)
         {
             reader = new AudioFileReader(file);
             data = Buffer(0);
             audioOut.Dispose();
-            audioOut = new WasapiOut();
+            audioOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
             Window.wave.audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
             audioOut.Init(reader);
             audioOut.Play();
@@ -75,7 +82,7 @@ namespace AudioWave
             method = delegate ()
             {
                 Thread.Sleep(1000 / 150);
-                if (reader != null && audioOut.PlaybackState == PlaybackState.Playing)
+                if (reader != null && audioOut.PlaybackState == PlaybackState.Playing || capture.CaptureState == CaptureState.Capturing)
                     GenerateImage();
                 MainWindow.Instance.graph.Dispatcher.BeginInvoke(method, System.Windows.Threading.DispatcherPriority.Background);
             };
@@ -91,6 +98,7 @@ namespace AudioWave
                 using (Graphics graphic = Graphics.FromImage(bmp))
                 {
                     PointF[] points = new PointF[width];
+                    if (capture)
                     data = Buffer(points.Length);
                     for (int i = 0; i < points.Length; i++)
                     {

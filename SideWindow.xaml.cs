@@ -21,6 +21,7 @@ namespace AudioWave
     /// </summary>
     public partial class SideWindow : Window
     {
+        public static SideWindow Instance;
         private MainWindow Window;
         private int current;
         private bool playing;
@@ -28,6 +29,7 @@ namespace AudioWave
         public SideWindow()
         {
             InitializeComponent();
+            Instance = this;
             Window = MainWindow.Instance;
             Window.wave.audioOut = new WasapiOut();
         }
@@ -44,7 +46,7 @@ namespace AudioWave
                 current++;
                 if (current < Playlist.Count)
                 {
-                    Window.wave.Init(Playlist[current]);
+                    Window.wave.Init(Playlist[current], Window.wave.defaultOutput);
                 }
             }
         }
@@ -97,7 +99,7 @@ namespace AudioWave
             current = playlist.SelectedIndex;
             if (playlist.SelectedIndex != -1)
             {
-                Window.wave.Init(Playlist[playlist.SelectedIndex]);
+                Window.wave.Init(Playlist[playlist.SelectedIndex], Window.wave.defaultOutput);
                 playlist.SelectedIndex = -1;
             }
             else
@@ -106,7 +108,7 @@ namespace AudioWave
             }
         }
 
-        private void On_Stop(object sender, MouseButtonEventArgs e)
+        public void On_Stop(object sender, MouseButtonEventArgs e)
         {
             playing = false;
             Window.wave.audioOut.Stop();
