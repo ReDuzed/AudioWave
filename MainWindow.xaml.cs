@@ -104,15 +104,14 @@ namespace AudioWave
             if (monitor)
             {
                 this.buffer.AddSamples(e.Buffer, 0, e.BytesRecorded);
-                if (!playback)
+                if (playback)
                 {
                     audioOut.Init(this.buffer);
                     audioOut.Play();
-                    playback = true;
+                    playback = false;
                 }
             }
         }
-
         Action method;
         private void Display()
         {
