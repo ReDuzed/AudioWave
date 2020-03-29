@@ -47,9 +47,12 @@ namespace AudioWave
         private void On_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             side.Close();
+            aux.Close();
             wave.audioOut.Dispose();
             if (wave.reader != null)
                 wave.reader.Dispose();
+            if (wave.buffer != null)
+                wave.buffer.ClearBuffer();
         }
     }
     public class Wave
@@ -62,7 +65,8 @@ namespace AudioWave
         public MMDevice defaultInput;
         public WasapiCapture capture;
         public BufferedWaveProvider buffer;
-        public bool monitor;
+        public bool monitor, once;
+        public WasapiOut monitorOut;
         public Wave()
         {
             Window = MainWindow.Instance;
@@ -77,6 +81,21 @@ namespace AudioWave
             Window.wave.audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
             audioOut.Init(reader);
             audioOut.Play();
+        }
+        public void InitAux(MMDevice output)
+        {
+            if (monitorOut != null)
+                monitorOut.Dispose();
+            try
+            {
+                monitorOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
+            }
+            catch
+            {
+                monitorOut = new WasapiOut();
+            }
+            if (buffer != null)
+                monitorOut.Init(buffer);
         }
         public void InitCapture(MMDevice input)
         {
@@ -106,8 +125,16 @@ namespace AudioWave
                 this.buffer.AddSamples(e.Buffer, 0, e.BytesRecorded);
                 if (playback)
                 {
-                    audioOut.Init(this.buffer);
-                    audioOut.Play();
+                    if (audioOut.PlaybackState != PlaybackState.Playing)
+                    {
+                        if (!once)
+                        {
+                            InitAux(defaultOutput);
+                            once = true;
+                        }
+                        monitorOut.Play();
+                        playback = false;
+                    }
                     playback = false;
                 }
             }
@@ -134,7 +161,7 @@ namespace AudioWave
                 using (Graphics graphic = Graphics.FromImage(bmp))
                 {
                     PointF[] points = new PointF[width];
-                    if (capture.CaptureState != CaptureState.Capturing && audioOut.PlaybackState == PlaybackState.Playing)
+                    if ((capture != null && capture.CaptureState != CaptureState.Capturing) || (reader != null && audioOut.PlaybackState == PlaybackState.Playing))
                     {
                         data = Buffer(points.Length);
                         for (int i = 0; i < points.Length; i++)

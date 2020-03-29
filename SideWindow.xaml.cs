@@ -12,7 +12,9 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
+using NAudio.CoreAudioApi;
 using NAudio.Wave;
+
 
 namespace AudioWave
 {
@@ -31,7 +33,7 @@ namespace AudioWave
             InitializeComponent();
             Instance = this;
             Window = MainWindow.Instance;
-            Window.wave.audioOut = new WasapiOut();
+            Window.wave.audioOut = new WasapiOut(MainWindow.Instance.wave.defaultOutput, AudioClientShareMode.Shared, false, 0);
         }
         public void On_PlaybackStopped(object sender, StoppedEventArgs e)
         {

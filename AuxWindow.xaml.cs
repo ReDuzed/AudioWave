@@ -114,7 +114,7 @@ namespace AudioWave
                 var list = (ListBox)e.Source;
                 if (list.SelectedIndex == -1)
                     continue;
-                if (list.Items[list.SelectedIndex].ToString() == a.FriendlyName)
+                if (list.Items[list.SelectedIndex].ToString().Contains(a.FriendlyName))
                 {
                     MainWindow.Instance.wave.defaultInput = a;
                     return;
@@ -131,7 +131,7 @@ namespace AudioWave
                 var list = (ListBox)e.Source;
                 if (list.SelectedIndex == -1)
                     continue;
-                if (list.Items[list.SelectedIndex].ToString() == a.FriendlyName)
+                if (list.Items[list.SelectedIndex].ToString().Contains(a.FriendlyName))
                 {
                     MainWindow.Instance.wave.defaultOutput = a;
                     return;
