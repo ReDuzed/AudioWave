@@ -29,17 +29,21 @@ namespace AudioWave
         {
             InitializeComponent();
             InitLists();
+            label_mic.Foreground = Brushes.Black;
+            label_monitor.Foreground = Brushes.Black;
         }
         private void InitLists()
         {
             foreach (var a in new MMDeviceEnumerator().EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active))
             {
+                list_input.Items.Clear();
                 var l = new ListBoxItem();
                 l.Content = a.FriendlyName;
                 list_input.Items.Add(l);
             }
             foreach (var a in new MMDeviceEnumerator().EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active))
             {
+                list_output.Items.Clear();
                 var l = new ListBoxItem();
                 l.Content = a.FriendlyName;
                 list_output.Items.Add(l);
@@ -49,16 +53,16 @@ namespace AudioWave
         {
             if (e.Handled)
                 return;
-            var label = (Label)e.OriginalSource;
+            var label = (Label)e.Source;
             if (active(label))
-            {
-                label.Foreground = Brushes.Green;
-                ActivateModes(true, label);
-            }
-            else
             {
                 label.Foreground = Brushes.Black;
                 ActivateModes(false, label);
+            }
+            else
+            {
+                label.Foreground = Brushes.Green;
+                ActivateModes(true, label);
             }
         }
         private void ActivateModes(bool activate, Label label)
@@ -68,10 +72,12 @@ namespace AudioWave
                 if (activate)
                 {
                     SideWindow.Instance.On_Stop(null, null);
+                    MainWindow.Instance.wave.InitCapture(MainWindow.Instance.wave.defaultInput);   
                 }
                 else
                 {
-
+                    if (MainWindow.Instance.wave.capture != null)
+                        MainWindow.Instance.wave.capture.StopRecording();
                 }
             }
             else if (label == label_monitor)
@@ -79,10 +85,13 @@ namespace AudioWave
                 if (activate)
                 {
                     SideWindow.Instance.On_Stop(null, null);
+                    MainWindow.Instance.wave.playback = true;
+                    MainWindow.Instance.wave.monitor = true;
                 }
                 else
                 {
-
+                    MainWindow.Instance.wave.audioOut.Stop();
+                    MainWindow.Instance.wave.monitor = false;
                 }
             }
         }
@@ -102,8 +111,10 @@ namespace AudioWave
                 return;
             foreach (var a in new MMDeviceEnumerator().EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active))
             {
-                var list = (ListBox)e.OriginalSource;
-                if (list.Items[list.SelectedIndex].ToString().Contains(a.FriendlyName))
+                var list = (ListBox)e.Source;
+                if (list.SelectedIndex == -1)
+                    continue;
+                if (list.Items[list.SelectedIndex].ToString() == a.FriendlyName)
                 {
                     MainWindow.Instance.wave.defaultInput = a;
                     return;
@@ -117,8 +128,10 @@ namespace AudioWave
                 return;
             foreach (var a in new MMDeviceEnumerator().EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active))
             {
-                var list = (ListBox)e.OriginalSource;
-                if (list.Items[list.SelectedIndex].ToString().Contains(a.FriendlyName))
+                var list = (ListBox)e.Source;
+                if (list.SelectedIndex == -1)
+                    continue;
+                if (list.Items[list.SelectedIndex].ToString() == a.FriendlyName)
                 {
                     MainWindow.Instance.wave.defaultOutput = a;
                     return;

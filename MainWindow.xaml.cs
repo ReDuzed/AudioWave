@@ -35,9 +35,9 @@ namespace AudioWave
         public MainWindow()
         {
             InitializeComponent();
-            wave.defaultOutput = new MMDeviceEnumerator().GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
             Instance = this;
             wave = new Wave();
+            wave.defaultOutput = new MMDeviceEnumerator().GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
             side = new SideWindow();
             side.Show();
             aux = new AuxWindow();
@@ -48,7 +48,8 @@ namespace AudioWave
         {
             side.Close();
             wave.audioOut.Dispose();
-            wave.reader.Dispose();
+            if (wave.reader != null)
+                wave.reader.Dispose();
         }
     }
     public class Wave
@@ -59,7 +60,9 @@ namespace AudioWave
         internal WasapiOut audioOut;
         public MMDevice defaultOutput;
         public MMDevice defaultInput;
-        public static WasapiCapture capture;
+        public WasapiCapture capture;
+        public BufferedWaveProvider buffer;
+        public bool monitor;
         public Wave()
         {
             Window = MainWindow.Instance;
@@ -75,6 +78,40 @@ namespace AudioWave
             audioOut.Init(reader);
             audioOut.Play();
         }
+        public void InitCapture(MMDevice input)
+        {
+            if (input == null)
+                input = new MMDeviceEnumerator().GetDefaultAudioEndpoint(DataFlow.Capture, Role.Multimedia);
+            capture = new WasapiCapture(input, false);
+            buffer = new BufferedWaveProvider(capture.WaveFormat);
+            buffer.DiscardOnBufferOverflow = true;
+            capture.ShareMode = AudioClientShareMode.Shared;
+            capture.StartRecording();
+            capture.DataAvailable += Capture_DataAvailable;
+        }
+
+        public bool playback;
+        private float[] samples = new float[] { };
+        private void Capture_DataAvailable(object sender, WaveInEventArgs e)
+        {
+            byte[] buffer = e.Buffer;
+            samples = new float[e.Buffer.Length];
+            for (int i = 1; i < e.BytesRecorded; i++)
+            {
+                short sample = (short)(buffer[i] << 8 | buffer[i - 1]);
+                samples[i - 1] = (float)sample / short.MaxValue;
+            }
+            if (monitor)
+            {
+                this.buffer.AddSamples(e.Buffer, 0, e.BytesRecorded);
+                if (!playback)
+                {
+                    audioOut.Init(this.buffer);
+                    audioOut.Play();
+                    playback = true;
+                }
+            }
+        }
 
         Action method;
         private void Display()
@@ -82,7 +119,7 @@ namespace AudioWave
             method = delegate ()
             {
                 Thread.Sleep(1000 / 150);
-                if (reader != null && audioOut.PlaybackState == PlaybackState.Playing || capture.CaptureState == CaptureState.Capturing)
+                if (reader != null && audioOut.PlaybackState == PlaybackState.Playing || capture != null && capture.CaptureState == CaptureState.Capturing)
                     GenerateImage();
                 MainWindow.Instance.graph.Dispatcher.BeginInvoke(method, System.Windows.Threading.DispatcherPriority.Background);
             };
@@ -98,14 +135,26 @@ namespace AudioWave
                 using (Graphics graphic = Graphics.FromImage(bmp))
                 {
                     PointF[] points = new PointF[width];
-                    if (capture)
-                    data = Buffer(points.Length);
-                    for (int i = 0; i < points.Length; i++)
+                    if (capture.CaptureState != CaptureState.Capturing && audioOut.PlaybackState == PlaybackState.Playing)
                     {
-                        points[i] = new PointF(i, height / 2 * data[i] + height / 2);
+                        data = Buffer(points.Length);
+                        for (int i = 0; i < points.Length; i++)
+                        {
+                            points[i] = new PointF(i, height / 2 * data[i] + height / 2);
+                        }
+                    }
+                    else if (samples.Length > 0)
+                    {
+                        for (int i = 0; i < points.Length; i++)
+                        {
+                            points[i] = new PointF(i, height / 2 * samples[i + 45] + height / 2);
+                        }
                     }
                     graphic.FillRectangle(System.Drawing.Brushes.Black, new System.Drawing.Rectangle(0, 0, width, height));
-                    graphic.DrawCurve(System.Drawing.Pens.White, points);
+                    if (points.Length > 0)
+                    {
+                        graphic.DrawCurve(System.Drawing.Pens.White, points);
+                    }
                 }
                 var bmpData = bmp.LockBits(new System.Drawing.Rectangle(0, 0, width, height), System.Drawing.Imaging.ImageLockMode.ReadOnly, bmp.PixelFormat);
                 

@@ -111,8 +111,11 @@ namespace AudioWave
         public void On_Stop(object sender, MouseButtonEventArgs e)
         {
             playing = false;
-            Window.wave.audioOut.Stop();
-            Window.wave.reader.Seek(0, System.IO.SeekOrigin.Begin);
+            if (Window.wave != null && Window.wave.reader != null)
+            {
+                Window.wave.audioOut.Stop();
+                Window.wave.reader.Seek(0, System.IO.SeekOrigin.Begin);
+            }
         }
 
         private void On_Pause(object sender, MouseButtonEventArgs e)
