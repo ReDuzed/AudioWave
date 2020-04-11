@@ -14,6 +14,7 @@ using System.Windows.Shapes;
 
 using NAudio;
 using NAudio.CoreAudioApi;
+using NAudio.Dsp;
 using NAudio.Wave;
 using NAudio.Utils;
 
@@ -24,7 +25,7 @@ namespace AudioWave
     /// </summary>
     public partial class AuxWindow : Window
     {
-        
+        private BiQuadFilter[,] filter;
         public AuxWindow()
         {
             InitializeComponent();

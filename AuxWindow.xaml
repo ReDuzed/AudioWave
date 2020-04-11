@@ -22,5 +22,6 @@
         <Slider HorizontalAlignment="Left" Margin="50,266,0,0" VerticalAlignment="Top" Width="85" Minimum="1" SmallChange="0.5"/>
         <Slider HorizontalAlignment="Left" Margin="50,289,0,0" VerticalAlignment="Top" Width="85" Minimum="1" SmallChange="0.5"/>
         <Label x:Name="label_loop" Content="Q" HorizontalAlignment="Left" Margin="104,369,0,0" VerticalAlignment="Top" FontFamily="Wingdings 3" FontSize="32" Foreground="#FF969696" RenderTransformOrigin="2.402,0.522" MouseDown="On_Refresh"/>
+        <Label Content="20hz" HorizontalAlignment="Left" Margin="10,220,0,0" VerticalAlignment="Top"/>
     </Grid>
 </Window>
