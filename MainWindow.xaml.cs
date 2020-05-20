@@ -20,7 +20,7 @@ using NAudio;
 using NAudio.Wave;
 using NAudio.CoreAudioApi;
 using NAudio.MediaFoundation;
-using NAudio.Dmo.Effect;
+using NAudio.Dsp;
 
 namespace AudioWave
 {
@@ -54,6 +54,10 @@ namespace AudioWave
                 wave.reader.Dispose();
             if (wave.buffer != null)
                 wave.buffer.ClearBuffer();
+            if (wave.capture != null)
+                wave.capture.StopRecording();
+            if (wave.record != null)
+                wave.record.Dispose();
         }
     }
     public class Wave
@@ -83,6 +87,7 @@ namespace AudioWave
             audioOut.Init(reader);
             audioOut.Play();
         }
+        public WaveRecorder record;
         public void InitAux(MMDevice output)
         {
             if (monitorOut != null)
@@ -106,19 +111,41 @@ namespace AudioWave
             buffer = new BufferedWaveProvider(capture.WaveFormat);
             buffer.DiscardOnBufferOverflow = true;
             graph = new BufferedWaveProvider(capture.WaveFormat);
+            graph.DiscardOnBufferOverflow = true;
             capture.ShareMode = AudioClientShareMode.Shared;
             capture.StartRecording();
             capture.DataAvailable += Capture_DataAvailable;
         }
 
+        public static bool update = false;
         public bool playback;
         private BufferedWaveProvider graph;
+        public static float[] eq = new float[7];
+        public static float[] oldEq = new float[7];
+        private BiQuadFilter[] filter = new BiQuadFilter[7];
         private void Capture_DataAvailable(object sender, WaveInEventArgs e)
         {
-            graph.AddSamples(e.Buffer, 0, e.BytesRecorded);
+            byte[] recorded = new byte[e.Buffer.Length];
+            for (int i = 0; i < e.Buffer.Length; i += 2)
+            {
+                short s = (short)(e.Buffer[i + 1] << 8 | e.Buffer[i]);
+                float sample = (float)s / short.MaxValue;
+                Update();
+                for (int j = 0; j < filter.Length; j++)
+                {
+                    if (filter[j] != null)
+                    {
+                        sample = filter[j].Transform(sample);
+                    }
+                }
+                short revert = (short)(sample * short.MaxValue);
+                recorded[i] = (byte)(revert & 0xff);
+                recorded[i + 1] = (byte)((revert >> 8) & 0xff);
+            }
+            graph.AddSamples(recorded, 0, recorded.Length);
             if (monitor)
             {
-                buffer.AddSamples(e.Buffer, 0, e.BytesRecorded);
+                buffer.AddSamples(recorded, 0, e.BytesRecorded);
                 if (playback)
                 {
                     if (audioOut.PlaybackState != PlaybackState.Playing)
@@ -139,6 +166,24 @@ namespace AudioWave
             { 
                 monitorOut.Stop(); 
             }
+        }
+        private void Update()
+        {
+            if (!update)
+                return;
+            int[] freq = new int[]
+            {
+                100, 200, 400, 800, 1200, 2400, 4800, 9600
+            };
+            var rate = capture.WaveFormat.SampleRate;
+            for (int i = 0; i < filter.Length; i++)
+            {
+                if (filter[i] == null)
+                    filter[i] = BiQuadFilter.PeakingEQ(rate, freq[i], 0.8f, eq[i]);
+                else
+                    filter[i].SetPeakingEq(rate, freq[i], 0.8f, eq[i]);
+            }
+            update = false;
         }
         Action method;
         private void Display()
@@ -185,7 +230,6 @@ namespace AudioWave
                     }
                 }
                 var bmpData = bmp.LockBits(new System.Drawing.Rectangle(0, 0, width, height), System.Drawing.Imaging.ImageLockMode.ReadOnly, bmp.PixelFormat);
-                
                 Window.graph.Source = BitmapSource.Create(width, height, 96f, 96f, PixelFormats.Bgr24, null, bmpData.Scan0, stride * height, stride);
                 bmp.UnlockBits(bmpData);
             }

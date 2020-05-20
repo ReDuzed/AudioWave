@@ -25,13 +25,14 @@ namespace AudioWave
     /// </summary>
     public partial class AuxWindow : Window
     {
-        private BiQuadFilter[,] filter;
+        public static AuxWindow Instance;
         public AuxWindow()
         {
             InitializeComponent();
             InitLists();
             label_mic.Foreground = Brushes.Black;
             label_monitor.Foreground = Brushes.Black;
+            Instance = this;
         }
         private void InitLists()
         {
@@ -138,6 +139,48 @@ namespace AudioWave
                     return;
                 }
             }
+        }
+
+        private void On_30(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            Wave.eq[0] = (float)e.NewValue;
+            Wave.update = true;
+        }
+
+        private void On_100(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            Wave.eq[1] = (float)e.NewValue;
+            Wave.update = true;
+        }
+
+        private void On_400(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            Wave.eq[2] = (float)e.NewValue;
+            Wave.update = true;
+        }
+
+        private void On_1k(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            Wave.eq[3] = (float)e.NewValue;
+            Wave.update = true;
+        }
+
+        private void On_3k(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            Wave.eq[4] = (float)e.NewValue;
+            Wave.update = true;
+        }
+
+        private void On_6k(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            Wave.eq[5] = (float)e.NewValue;
+            Wave.update = true;
+        }
+
+        private void On_10k(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            Wave.eq[6] = (float)e.NewValue;
+            Wave.update = true;
         }
     }
 }
