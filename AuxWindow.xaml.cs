@@ -182,5 +182,34 @@ namespace AudioWave
             Wave.eq[6] = (float)e.NewValue;
             Wave.update = true;
         }
+        private void On_96k(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            Wave.eq[7] = (float)e.NewValue;
+            Wave.update = true;
+        }
+
+        private void FpsSelect_Change(object sender, SelectionChangedEventArgs e)
+        {
+            int.TryParse(((ListBoxItem)combo_fps.SelectedItem).Content.ToString(), out int divisor);
+            Wave.Fps = 1000 / Math.Max(24, divisor);
+        }
+
+        private void On_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            
+        }
+        internal static bool Loopback;
+        private void On_Checked(object sender, RoutedEventArgs e)
+        {
+            if (!e.Handled) Loopback = (bool)((CheckBox)e.Source).IsChecked;
+            if (Loopback)
+            {
+                Wave.graph = new BufferedWaveProvider(Wave.LoopCapture.WaveFormat);
+                Wave.graph.DiscardOnBufferOverflow = true;
+                Wave.LoopCapture.StartRecording();
+                return;
+            }
+            Wave.LoopCapture.StopRecording();
+        }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -49,6 +50,7 @@ namespace AudioWave
                 if (current < Playlist.Count)
                 {
                     Window.wave.Init(Playlist[current], Window.wave.defaultOutput);
+                    WriteCurrent(Playlist[current]);
                 }
             }
         }
@@ -102,14 +104,25 @@ namespace AudioWave
             if (playlist.SelectedIndex != -1)
             {
                 Window.wave.Init(Playlist[playlist.SelectedIndex], Window.wave.defaultOutput);
+                WriteCurrent(Playlist[playlist.SelectedIndex]);
                 playlist.SelectedIndex = -1;
             }
             else
             {
                 Window.wave.audioOut.Play();
+                WriteCurrent(Playlist[0]);
             }
         }
-
+        private void WriteCurrent(string name)
+        {
+            using (StreamWriter sw = new StreamWriter("current.txt") { NewLine = string.Empty })
+            {
+                name = name.Substring(0, name.LastIndexOf("."));
+                if (name.Contains(@"\"))
+                    sw.Write(name.Substring(name.LastIndexOf(@"\") + 1));
+                else sw.Write(name);
+            }
+        }
         public void On_Stop(object sender, MouseButtonEventArgs e)
         {
             playing = false;
@@ -138,6 +151,11 @@ namespace AudioWave
         {
             playlist.Items.Clear();
             Playlist.Clear();
+        }
+
+        private void On_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+         
         }
     }
 }
