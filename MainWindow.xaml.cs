@@ -255,16 +255,21 @@ namespace AudioWave
 
                     float num = data.Max();
                     float num2 = data.Min();
-                    int num3 = 0;
-                    int[] indexArray = new int[2];
+                    float num3 = data.Average();
+                    int[] indexArray = new int[3];
                     for (int i = 0; i < data.Length; i++)
                     {
                         if (num == data[i])
                             indexArray[0] = i;
                         if (num2 == data[i])
                             indexArray[1] = i;
+                        if (num3 == data[i])
+                            indexArray[2] = i / 2;
                     }
                     int length = indexArray.Max() - indexArray.Min();
+                    if (length + indexArray[2] < width)
+                        length += indexArray[2];
+
                     PointF[] points = new PointF[width];
                     if ((capture != null && capture.CaptureState != CaptureState.Capturing) || (reader != null && audioOut.PlaybackState == PlaybackState.Playing))
                     {
