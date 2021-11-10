@@ -354,16 +354,27 @@ namespace AudioWave
         }
         private PointF[] CircleEffect(PointF[] points)
         {
+            PointF[] output = new PointF[points.Length + 1];
+            float fade = 1 / 24f;
             for (int i = 0; i < points.Length; i++)
-            {
+            {   
+                bool flagIn = false;
+                bool flagOut = false;
+                if (flagIn = i < 24)
+                    fade += 1 / 24;
+                if (flagOut = i >= points.Length - 24)
+                    fade -= 1 / 24f;
+                float num = Math.Min(Math.Max(fade, 0.1f), 1f);
                 float centerX = (float)this.Window.Width / 2f;
                 float centerY = (float)this.Window.Height / 2f;
                 float radius = centerY;
-                float x = centerX + (float)(radius / 3f * (data[i] - 1) * Math.Cos(i / 800f * Math.PI * 2f));
-                float y = centerY + (float)(radius / 3f * (data[i] - 1) * Math.Sin(i / 800f * Math.PI * 2f));
+                float x = centerX + (float)(radius / 3f * (data[i] - 1) * (flagIn || flagOut ? num + 0.5f : 1f) * Math.Cos(i / 800f * Math.PI * 2f));
+                float y = centerY + (float)(radius / 3f * (data[i] - 1) * (flagIn || flagOut ? num + 0.5f : 1f) * Math.Sin(i / 800f * Math.PI * 2f));
                 points[i] = new PointF(x, y);
             }
-            return points;
+            Array.Copy(points, output, points.Length);
+            output[points.Length] = points[0];
+            return output;
         }
     }
 }
