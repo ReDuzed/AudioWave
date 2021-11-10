@@ -196,7 +196,7 @@ namespace AudioWave
 
         private void On_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            
+            Application.Current.Shutdown();
         }
         internal static bool Loopback;
         private void On_Checked(object sender, RoutedEventArgs e)
@@ -210,6 +210,28 @@ namespace AudioWave
                 return;
             }
             Wave.LoopCapture.StopRecording();
+        }
+
+        private void TextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            int.TryParse(((TextBox)sender).Text, out int w);
+            Wave.width = w;
+        }
+        private void On_MouseEnter(object sender, MouseEventArgs e)
+        {
+            Label label = (Label)e.Source;
+            label.Foreground = new SolidColorBrush(Color.FromRgb(0, 0, 0));
+        }
+
+        private void On_MouseLeave(object sender, MouseEventArgs e)
+        {
+            Label label = (Label)e.Source;
+            label.Foreground = new SolidColorBrush(Color.FromRgb(150, 150, 150));
+        }
+        public static bool CircularStyle = false;
+        private void check_waveform_Checked(object sender, RoutedEventArgs e)
+        {
+            CircularStyle = ((CheckBox)sender).IsChecked.Value;
         }
     }
 }

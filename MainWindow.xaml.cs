@@ -23,6 +23,7 @@ namespace AudioWave
         internal Wave wave;
         internal SideWindow side;
         internal AuxWindow aux;
+        internal static int Seed = 1;
         public MainWindow()
         {
             InitializeComponent();
@@ -74,6 +75,7 @@ namespace AudioWave
         public BufferedWaveProvider buffer;
         public bool monitor, once;
         public WasapiOut monitorOut;
+        internal static int width = 1;
         public Wave()
         {
             Window = MainWindow.Instance;
@@ -88,9 +90,10 @@ namespace AudioWave
             data = _Buffer(0);
             if (audioOut != null)
             {
+                audioOut.PlaybackStopped -= MainWindow.Instance.side.On_PlaybackStopped;
                 audioOut.Dispose();
                 audioOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
-                Window.wave.audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
+                audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
                 audioOut.Init(reader);
                 audioOut.Play();
             }
@@ -264,7 +267,7 @@ namespace AudioWave
                         if (num2 == data[i])
                             indexArray[1] = i;
                         if (num3 == data[i])
-                            indexArray[2] = i / 2;
+                            indexArray[2] = i;
                     }
                     int length = indexArray.Max() - indexArray.Min();
                     if (length + indexArray[2] < width)
@@ -306,6 +309,8 @@ namespace AudioWave
                                 points[i].Y = points[i - 1].Y;
                         }
                         points[points.Length - 1] = points[points.Length - 2];
+                        if (AuxWindow.CircularStyle)
+                            points = CircleEffect(points);
                     }
                     else
                     {
@@ -318,7 +323,13 @@ namespace AudioWave
                     graphic.FillRectangle(System.Drawing.Brushes.Black, new System.Drawing.Rectangle(0, 0, width, height));
                     if (points.Length > 1)
                     {
-                        graphic.DrawCurve(System.Drawing.Pens.White, points);
+                        if ((MainWindow.Seed += 10) >= int.MaxValue - 10)
+                            MainWindow.Seed = 1;
+                        var pen = new System.Drawing.Pen(System.Drawing.Brushes.White);
+                        pen.Width = Math.Min(Math.Max(Wave.width, 1), 12);
+                        if (AuxWindow.CircularStyle)
+                            graphic.DrawLines(pen, points);
+                        else graphic.DrawCurve(pen, points);
                         oldPoints = points;
                     }
                 }
@@ -340,6 +351,19 @@ namespace AudioWave
             reader.ToSampleProvider().Read(buffer, 0, buffer.Length);
             reader.Position = position;
             return buffer;
+        }
+        private PointF[] CircleEffect(PointF[] points)
+        {
+            for (int i = 0; i < points.Length; i++)
+            {
+                float centerX = (float)this.Window.Width / 2f;
+                float centerY = (float)this.Window.Height / 2f;
+                float radius = centerY;
+                float x = centerX + (float)(radius / 3f * (data[i] - 1) * Math.Cos(i / 800f * Math.PI * 2f));
+                float y = centerY + (float)(radius / 3f * (data[i] - 1) * Math.Sin(i / 800f * Math.PI * 2f));
+                points[i] = new PointF(x, y);
+            }
+            return points;
         }
     }
 }

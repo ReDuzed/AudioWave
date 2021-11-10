@@ -29,6 +29,8 @@ namespace AudioWave
         private int current;
         private bool playing;
         private bool looping;
+        internal bool toggled;
+        public List<string> Playlist = new List<string>();
         public SideWindow()
         {
             InitializeComponent();
@@ -46,11 +48,15 @@ namespace AudioWave
             }
             if (playing)
             {
-                current++;
-                if (current < Playlist.Count)
+                if (current++ < Playlist.Count)
                 {
-                    Window.wave.Init(Playlist[current], Window.wave.defaultOutput);
                     WriteCurrent(Playlist[current]);
+                    playlist.SelectedIndex = current;
+                    Window.wave.Init(Playlist[current], Window.wave.defaultOutput);
+                }
+                else
+                {
+                    playing = false;
                 }
             }
         }
@@ -66,7 +72,6 @@ namespace AudioWave
             label.Foreground = new SolidColorBrush(Color.FromRgb(150, 150, 150));
         }
 
-        public List<string> Playlist = new List<string>();
         private void Button_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new System.Windows.Forms.OpenFileDialog();
@@ -100,17 +105,21 @@ namespace AudioWave
         private void On_Play(object sender, MouseButtonEventArgs e)
         {
             playing = true;
+            toggled = true;
             current = playlist.SelectedIndex;
             if (playlist.SelectedIndex != -1)
             {
-                Window.wave.Init(Playlist[playlist.SelectedIndex], Window.wave.defaultOutput);
-                WriteCurrent(Playlist[playlist.SelectedIndex]);
-                playlist.SelectedIndex = -1;
+                WriteCurrent(Playlist[current]);
+                Window.wave.Init(Playlist[current], Window.wave.defaultOutput);
+                //playlist.SelectedIndex = -1;
             }
             else
             {
-                Window.wave.audioOut.Play();
-                WriteCurrent(Playlist[0]);
+                if (Playlist.Count > 0)
+                {
+                    Window.wave?.audioOut?.Play();
+                    WriteCurrent(Playlist[0]);
+                }
             }
         }
         private void WriteCurrent(string name)
@@ -135,9 +144,9 @@ namespace AudioWave
 
         private void On_Pause(object sender, MouseButtonEventArgs e)
         {
-            if (Window.wave.audioOut.PlaybackState == PlaybackState.Playing)
+            if (Window.wave?.audioOut?.PlaybackState == PlaybackState.Playing)
             {
-                Window.wave.audioOut.Pause();
+                Window.wave?.audioOut?.Pause();
             }
         }
 
@@ -155,7 +164,61 @@ namespace AudioWave
 
         private void On_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-         
+            Application.Current.Shutdown();
+        }
+
+        bool shuffle = false;
+        private void On_Shuffle(object sender, MouseButtonEventArgs e)
+        {
+            shuffle = !shuffle;
+            Label label = (Label)e.Source;
+            label.Foreground = shuffle ? new SolidColorBrush(Color.FromRgb(0, 0, 0)) : new SolidColorBrush(Color.FromRgb(150, 150, 150));
+
+            var pathList = new string[Playlist.Count];
+            var list = new string[playlist.Items.Count];
+            for (int n = 0; n < list.Length; n++)
+            {
+                list[n] = playlist.Items[n].ToString();
+                if (list[n].Contains(":"))
+                    list[n] = list[n].Substring(list[n].IndexOf(':') + 2);
+                pathList[n] = Playlist[n];
+            }
+
+            if (!shuffle)
+            {
+                playlist.Items.Clear();
+                Playlist.Clear();
+                list = list.OrderBy(t => t).ToArray();
+                Playlist = pathList.OrderBy(t => t).ToList();
+                for (int n = 0; n < list.Length; n++)
+                {
+                    playlist.Items.Add(list[n]);
+                }
+                return;
+            }
+
+            playlist.Items.Clear();
+            Playlist.Clear();
+            string name = "";
+            for (int i = 0; i < list.Length; i++)
+            {
+                while (true)
+                {
+                    int rand = new System.Random(MainWindow.Seed.GetHashCode()).Next(list.Length);
+
+                    while (playlist.Items.Contains(name = list[rand]))
+                    {
+                        if ((MainWindow.Seed += 10) >= int.MaxValue - 10)
+                            MainWindow.Seed = 1;
+                        rand = new System.Random(MainWindow.Seed.GetHashCode()).Next(list.Length);
+                        continue;
+                    }
+
+                    playlist.Items.Add(name);
+                    Playlist.Add(pathList[rand]);
+                    break;
+                }
+            }
         }
     }
 }

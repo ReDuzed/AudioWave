@@ -5,19 +5,19 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:AudioWave"
         mc:Ignorable="d"
-        Title="AuxWindow" Height="450" Width="151" ResizeMode="NoResize" SizeToContent="WidthAndHeight" WindowStyle="ToolWindow" BorderThickness="0" Closing="On_Closing" >
+        Title="AuxWindow" WindowStartupLocation="Manual" Height="450" Width="230" ResizeMode="CanMinimize" WindowStyle="ToolWindow" SizeToContent="WidthAndHeight" BorderThickness="0" Closing="On_Closing" Background="#FF474747" >
     <Grid>
-        <Rectangle HorizontalAlignment="Left" Height="419" VerticalAlignment="Top" Width="143"/>
-        <ListBox x:Name="list_input" HorizontalAlignment="Left" Height="39" Margin="10,27,0,0" VerticalAlignment="Top" Width="125" ScrollViewer.VerticalScrollBarVisibility="Visible" SelectionChanged="input_Changed"/>
-        <Label Content="Input" HorizontalAlignment="Left" Margin="8,1,0,0" VerticalAlignment="Top" FontWeight="Bold"/>
-        <ListBox x:Name="list_output" HorizontalAlignment="Left" Height="39" Margin="10,90,0,0" VerticalAlignment="Top" Width="125" ScrollViewer.VerticalScrollBarVisibility="Visible" SelectionChanged="output_Change"/>
-        <Label Content="Output" HorizontalAlignment="Left" Margin="8,64,0,0" VerticalAlignment="Top" FontWeight="Bold" RenderTransformOrigin="0.565,-0.016"/>
-        <Label x:Name="label_mic" Content="Microphone" HorizontalAlignment="Left" Margin="10,365,0,0" VerticalAlignment="Top" MouseDown="On_MouseDown" />
-        <Label Content="Modes" HorizontalAlignment="Left" Margin="10,343,0,0" VerticalAlignment="Top" FontWeight="Bold"/>
-        <Label x:Name="label_monitor" Content="Monitoring" HorizontalAlignment="Left" Margin="10,391,0,0" VerticalAlignment="Top" MouseDown="On_MouseDown" />
-        <Label x:Name="label_loop" Content="Q" HorizontalAlignment="Left" Margin="104,374,0,0" VerticalAlignment="Top" FontFamily="Wingdings 3" FontSize="32" Foreground="#FF969696" RenderTransformOrigin="2.402,0.522" MouseDown="On_Refresh"/>
-        <Label Content="FPS" HorizontalAlignment="Left" Margin="10,134,0,0" VerticalAlignment="Top"/>
-        <ComboBox x:Name="combo_fps" HorizontalAlignment="Left" Margin="44,136,0,0" VerticalAlignment="Top" Width="91" SelectionChanged="FpsSelect_Change">
+        <Rectangle HorizontalAlignment="Left" Height="422" VerticalAlignment="Top" Width="224"/>
+        <ListBox x:Name="list_input" HorizontalAlignment="Left" Height="80" Margin="10,27,0,0" VerticalAlignment="Top" Width="204" ScrollViewer.VerticalScrollBarVisibility="Visible" SelectionChanged="input_Changed"/>
+        <Label Content="Input" HorizontalAlignment="Left" Margin="8,1,0,0" VerticalAlignment="Top" FontWeight="Bold" Foreground="White"/>
+        <ListBox x:Name="list_output" HorizontalAlignment="Left" Height="80" Margin="10,143,0,0" VerticalAlignment="Top" Width="204" ScrollViewer.VerticalScrollBarVisibility="Visible" SelectionChanged="output_Change"/>
+        <Label Content="Output" HorizontalAlignment="Left" Margin="10,112,0,0" VerticalAlignment="Top" FontWeight="Bold" RenderTransformOrigin="0.565,-0.016" Foreground="White"/>
+        <Label x:Name="label_mic" Content="Microphone" HorizontalAlignment="Left" Margin="10,365,0,0" VerticalAlignment="Top" MouseDown="On_MouseDown" Foreground="White" />
+        <Label Content="Modes" HorizontalAlignment="Left" Margin="10,343,0,0" VerticalAlignment="Top" FontWeight="Bold" Foreground="White"/>
+        <Label x:Name="label_monitor" Content="Monitoring" HorizontalAlignment="Left" Margin="10,391,0,0" VerticalAlignment="Top" MouseDown="On_MouseDown" Foreground="White" />
+        <Label x:Name="label_update" Content="Update" HorizontalAlignment="Left" Margin="165,228,0,0" VerticalAlignment="Top" FontSize="12" Foreground="#FF969696" RenderTransformOrigin="2.402,0.522" MouseDown="On_Refresh" MouseEnter="On_MouseEnter" MouseLeave="On_MouseLeave"/>
+        <Label Content="FPS" HorizontalAlignment="Left" Margin="10,317,0,0" VerticalAlignment="Top" Foreground="White"/>
+        <ComboBox x:Name="combo_fps" HorizontalAlignment="Left" Margin="60,317,0,0" VerticalAlignment="Top" Width="154" SelectionChanged="FpsSelect_Change">
             <ListBoxItem Content="20"/>
             <ListBoxItem Content="24"/>
             <ListBoxItem Content="30"/>
@@ -25,6 +25,7 @@
             <ListBoxItem Content="60"/>
             <ListBoxItem Content="120"/>
         </ComboBox>
+        <!--
         <Label Content="100Hz" HorizontalAlignment="Left" Margin="8,159,0,0" VerticalAlignment="Top" Foreground="#FF646464"/>
         <Label Content="200" HorizontalAlignment="Left" Margin="10,182,0,0" VerticalAlignment="Top" Foreground="#FF646464"/>
         <Label Content="400" HorizontalAlignment="Left" Margin="10,205,0,0" VerticalAlignment="Top" Foreground="#FF646464"/>
@@ -41,6 +42,10 @@
         <Slider x:Name="s_30" HorizontalAlignment="Left" Margin="50,163,0,0" VerticalAlignment="Top" Width="85" Minimum="-10" ValueChanged="On_30" Maximum="10"/>
         <Slider x:Name="s_96k" HorizontalAlignment="Left" Margin="50,324,0,0" VerticalAlignment="Top" Width="85" Minimum="-10" ValueChanged="On_96k" Maximum="10"/>
         <Label Content="9600" HorizontalAlignment="Left" Margin="10,320,0,0" VerticalAlignment="Top" Foreground="#FF646464"/>
-        <CheckBox Content="Loopback" HorizontalAlignment="Left" Margin="63,351,0,0" VerticalAlignment="Top" Checked="On_Checked"/>
+        <Label Content="Width" HorizontalAlignment="Left" Margin="10,286,0,0" VerticalAlignment="Top"/>
+        <TextBox HorizontalAlignment="Left" Height="23" Margin="60,287,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="154" TextChanged="TextBox_TextChanged"/>
+        -->
+        <CheckBox Content="Loopback" HorizontalAlignment="Left" Margin="108,371,0,0" VerticalAlignment="Top" Checked="On_Checked" Foreground="White"/>
+        <CheckBox x:Name="check_waveform" Content="Circular Waveform" HorizontalAlignment="Left" Margin="10,234,0,0" VerticalAlignment="Top" Foreground="White" Unchecked="check_waveform_Checked" Checked="check_waveform_Checked"/>
     </Grid>
 </Window>
