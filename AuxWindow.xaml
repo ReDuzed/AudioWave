@@ -16,6 +16,7 @@
         <Label Content="Modes" HorizontalAlignment="Left" Margin="10,343,0,0" VerticalAlignment="Top" FontWeight="Bold" Foreground="White"/>
         <Label x:Name="label_monitor" Content="Monitoring" HorizontalAlignment="Left" Margin="10,391,0,0" VerticalAlignment="Top" MouseDown="On_MouseDown" Foreground="White" />
         <Label x:Name="label_update" Content="Update" HorizontalAlignment="Left" Margin="165,228,0,0" VerticalAlignment="Top" FontSize="12" Foreground="#FF969696" RenderTransformOrigin="2.402,0.522" MouseDown="On_Refresh" MouseEnter="On_MouseEnter" MouseLeave="On_MouseLeave"/>
+        <!--
         <Label Content="FPS" HorizontalAlignment="Left" Margin="10,317,0,0" VerticalAlignment="Top" Foreground="White"/>
         <ComboBox x:Name="combo_fps" HorizontalAlignment="Left" Margin="60,317,0,0" VerticalAlignment="Top" Width="154" SelectionChanged="FpsSelect_Change">
             <ListBoxItem Content="20"/>
@@ -25,6 +26,7 @@
             <ListBoxItem Content="60"/>
             <ListBoxItem Content="120"/>
         </ComboBox>
+        -->
         <!--
         <Label Content="100Hz" HorizontalAlignment="Left" Margin="8,159,0,0" VerticalAlignment="Top" Foreground="#FF646464"/>
         <Label Content="200" HorizontalAlignment="Left" Margin="10,182,0,0" VerticalAlignment="Top" Foreground="#FF646464"/>
@@ -45,7 +47,8 @@
         <Label Content="Width" HorizontalAlignment="Left" Margin="10,286,0,0" VerticalAlignment="Top"/>
         <TextBox HorizontalAlignment="Left" Height="23" Margin="60,287,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="154" TextChanged="TextBox_TextChanged"/>
         -->
-        <CheckBox Content="Loopback" HorizontalAlignment="Left" Margin="108,371,0,0" VerticalAlignment="Top" Checked="On_Checked" Foreground="White"/>
+        <CheckBox x:Name="check_loopback" Content="Loopback" HorizontalAlignment="Left" Margin="108,371,0,0" VerticalAlignment="Top" Unchecked="On_Checked" Checked="On_Checked" Foreground="White"/>
         <CheckBox x:Name="check_waveform" Content="Circular Waveform" HorizontalAlignment="Left" Margin="10,234,0,0" VerticalAlignment="Top" Foreground="White" Unchecked="check_waveform_Checked" Checked="check_waveform_Checked"/>
+        <CheckBox x:Name="check_style" Content="Stylized" HorizontalAlignment="Left" Margin="10,254,0,0" VerticalAlignment="Top" Foreground="White" Checked="check_style_Checked" Unchecked="check_style_Unchecked"/>
     </Grid>
 </Window>

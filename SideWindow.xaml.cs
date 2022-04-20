@@ -50,9 +50,10 @@ namespace AudioWave
             {
                 if (current++ < Playlist.Count)
                 {
-                    WriteCurrent(Playlist[current]);
+                    int index = Math.Min(current, Playlist.Count - 1);
+                    WriteCurrent(Playlist[index]);
                     playlist.SelectedIndex = current;
-                    Window.wave.Init(Playlist[current], Window.wave.defaultOutput);
+                    Window.wave.Init(Playlist[index], Window.wave.defaultOutput);
                 }
                 else
                 {
@@ -104,6 +105,8 @@ namespace AudioWave
 
         private void On_Play(object sender, MouseButtonEventArgs e)
         {
+            AuxWindow.Instance.check_loopback.IsChecked = false;
+
             playing = true;
             toggled = true;
             current = playlist.SelectedIndex;

@@ -10,7 +10,9 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
 namespace AudioWave
 {
@@ -62,6 +64,33 @@ namespace AudioWave
             aux.Close();
             Process.GetCurrentProcess().Kill();
         }
+
+        private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            background.Width = this.ActualWidth;
+            background.Height = this.ActualHeight;
+            graph.Width = this.ActualWidth - (this.ActualWidth % 20);
+            graph.Height = this.ActualHeight;
+            float ratio = 800f / 450f;
+            this.Width = this.Height * ratio + 20;
+        }
+
+        private void Window_LayoutUpdated(object sender, EventArgs e)
+        {
+            var timer = new System.Timers.Timer(1000);
+            timer.Elapsed += (object o, System.Timers.ElapsedEventArgs args) =>
+            { 
+                Dispatcher.Invoke(() => 
+                { 
+                    this.MaxWidth = 1920;
+                    this.MaxHeight = 1080;
+                    this.Width = 800;
+                    this.Height = 450;
+                });
+                timer.Dispose();
+            };
+            timer.Start();
+        }
     }
     public class Wave
     {
@@ -76,9 +105,12 @@ namespace AudioWave
         public bool monitor, once;
         public WasapiOut monitorOut;
         internal static int width = 1;
+        internal static Wave Instance;
+        internal MixingWaveProvider32 mixer = new MixingWaveProvider32();
         public Wave()
         {
             Window = MainWindow.Instance;
+            Instance = this;
             Display();
 
             LoopCapture = new WasapiLoopbackCapture(WasapiLoopbackCapture.GetDefaultLoopbackCaptureDevice());
@@ -87,6 +119,7 @@ namespace AudioWave
         public void Init(string file, MMDevice output)
         {
             reader = new AudioFileReader(file);
+            //mixer.AddInputStream(reader);
             data = _Buffer(0);
             if (audioOut != null)
             {
@@ -231,18 +264,20 @@ namespace AudioWave
             }
             update = false;
         }
-        Action method;
-        public static int Fps = 1000 / 30;
+        EventHandler method;
+        public static int Fps = 1000 / 120;
+        public static bool style = false;
         private void Display()
         {
-            method = delegate ()
+            method = delegate (object sender, EventArgs e)
             {
-                Thread.Sleep(Fps);
+                //Thread.Sleep(Fps);
                 if (reader != null && audioOut.PlaybackState == PlaybackState.Playing || capture != null && capture.CaptureState == CaptureState.Capturing || LoopCapture != null && LoopCapture.CaptureState == CaptureState.Capturing)
                     GenerateImage();
-                MainWindow.Instance.graph.Dispatcher.BeginInvoke(method, System.Windows.Threading.DispatcherPriority.Background);
+                //MainWindow.Instance.graph.Dispatcher.BeginInvoke(method, System.Windows.Threading.DispatcherPriority.Render);
             };
-            MainWindow.Instance.graph.Dispatcher.BeginInvoke(method, System.Windows.Threading.DispatcherPriority.Background);
+            new DispatcherTimer(TimeSpan.FromMilliseconds(Fps), DispatcherPriority.Render, method, MainWindow.Instance.Dispatcher);
+            //MainWindow.Instance.graph.Dispatcher.BeginInvoke(method, System.Windows.Threading.DispatcherPriority.Render);
         }
         private void GenerateImage()
         {
@@ -278,7 +313,7 @@ namespace AudioWave
                     {
                         for (int i = 0; i < points.Length; i += points.Length / Math.Max(length, 1))
                         {
-                            float y = height / 2 * data[i] + height / 2;
+                            float y = height / 2 * (float)(data[i] * (style ? Math.Sin((float)i / width * Math.PI) : 1f)) + height / 2;
                             points[i] = new PointF(Math.Min(i, points.Length), y);
                         }
                         PointF begin = new PointF();
@@ -301,7 +336,7 @@ namespace AudioWave
                                 flag = false;
                             }
                         }
-                        for (int i = points.Length - 1; i >= 0 ; i--)
+                        for (int i = points.Length - 1; i > 0 ; i--)
                         {
                             if (points[i].X == 0f)
                                 points[i].X = i;
@@ -309,17 +344,17 @@ namespace AudioWave
                                 points[i].Y = points[i - 1].Y;
                         }
                         points[points.Length - 1] = points[points.Length - 2];
-                        if (AuxWindow.CircularStyle)
-                            points = CircleEffect(points);
                     }
-                    else
+                    else if (reader == null)
                     {
-                        data = LiveBuffer();
+                        //data = LiveBuffer();
                         for (int i = 0; i < points.Length; i++)
                         {
                             points[i] = new PointF(i, height / 2 * data[i] + height / 2);
                         }
                     }
+                    if (AuxWindow.CircularStyle)
+                        points = CircleEffect(points);
                     graphic.FillRectangle(System.Drawing.Brushes.Black, new System.Drawing.Rectangle(0, 0, width, height));
                     if (points.Length > 1)
                     {
@@ -346,30 +381,43 @@ namespace AudioWave
         }
         private float[] _Buffer(int length)
         {
-            long position = reader.Position;
-            float[] buffer = new float[length];
-            reader.ToSampleProvider().Read(buffer, 0, buffer.Length);
-            reader.Position = position;
-            return buffer;
+            if (reader != null)
+            { 
+                try
+                { 
+                    long position = reader.Position;
+                    float[] buffer = new float[length];
+                    reader.ToSampleProvider().Read(buffer, 0, buffer.Length);
+                    reader.Position = position;
+                    return buffer;
+                }
+                catch
+                {
+                    return new float[] { 0f };
+                }
+            }
+            else return LiveBuffer();
         }
         private PointF[] CircleEffect(PointF[] points)
         {
             PointF[] output = new PointF[points.Length + 1];
             float fade = 1 / 24f;
             for (int i = 0; i < points.Length; i++)
-            {   
+            {
                 bool flagIn = false;
                 bool flagOut = false;
                 if (flagIn = i < 24)
                     fade += 1 / 24;
                 if (flagOut = i >= points.Length - 24)
                     fade -= 1 / 24f;
+                float width = (float)this.Window.graph.Width;
+                float height = (float)this.Window.graph.Height;
                 float num = Math.Min(Math.Max(fade, 0.1f), 1f);
-                float centerX = (float)this.Window.Width / 2f;
-                float centerY = (float)this.Window.Height / 2f;
+                float centerX = (float)width / 2f;
+                float centerY = (float)height / 2f;
                 float radius = centerY;
-                float x = centerX + (float)(radius / 3f * (data[i] - 1) * (flagIn || flagOut ? num + 0.5f : 1f) * Math.Cos(i / 800f * Math.PI * 2f));
-                float y = centerY + (float)(radius / 3f * (data[i] - 1) * (flagIn || flagOut ? num + 0.5f : 1f) * Math.Sin(i / 800f * Math.PI * 2f));
+                float x = centerX + (float)(radius / 3f * (data[i] + 1) * (flagIn || flagOut ? num : 1f) * Math.Cos(i / width * Math.PI * 2f));
+                float y = centerY + (float)(radius / 3f * (data[i] + 1) * (flagIn || flagOut ? num : 1f) * Math.Sin(i / width * Math.PI * 2f));
                 points[i] = new PointF(x, y);
             }
             Array.Copy(points, output, points.Length);

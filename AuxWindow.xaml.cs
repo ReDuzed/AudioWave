@@ -204,6 +204,7 @@ namespace AudioWave
             if (!e.Handled) Loopback = (bool)((CheckBox)e.Source).IsChecked;
             if (Loopback)
             {
+                Wave.Instance.reader?.Dispose();
                 Wave.graph = new BufferedWaveProvider(Wave.LoopCapture.WaveFormat);
                 Wave.graph.DiscardOnBufferOverflow = true;
                 Wave.LoopCapture.StartRecording();
@@ -232,6 +233,16 @@ namespace AudioWave
         private void check_waveform_Checked(object sender, RoutedEventArgs e)
         {
             CircularStyle = ((CheckBox)sender).IsChecked.Value;
+        }
+
+        private void check_style_Checked(object sender, RoutedEventArgs e)
+        {
+            Wave.style = true;
+        }
+
+        private void check_style_Unchecked(object sender, RoutedEventArgs e)
+        {
+            Wave.style = false;
         }
     }
 }
