@@ -36,16 +36,16 @@ namespace AudioWave
         }
         private void InitLists()
         {
+            list_input.Items.Clear();
             foreach (var a in new MMDeviceEnumerator().EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active))
             {
-                list_input.Items.Clear();
                 var l = new ListBoxItem();
                 l.Content = a.FriendlyName;
                 list_input.Items.Add(l);
             }
+            list_output.Items.Clear();
             foreach (var a in new MMDeviceEnumerator().EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active))
             {
-                list_output.Items.Clear();
                 var l = new ListBoxItem();
                 l.Content = a.FriendlyName;
                 list_output.Items.Add(l);
@@ -190,8 +190,8 @@ namespace AudioWave
 
         private void FpsSelect_Change(object sender, SelectionChangedEventArgs e)
         {
-            int.TryParse(((ListBoxItem)combo_fps.SelectedItem).Content.ToString(), out int divisor);
-            Wave.Fps = 1000 / Math.Max(24, divisor);
+            //int.TryParse(((ListBoxItem)combo_fps.SelectedItem).Content.ToString(), out int divisor);
+            Wave.Fps = 1000 / 120;
         }
 
         private void On_Closing(object sender, System.ComponentModel.CancelEventArgs e)

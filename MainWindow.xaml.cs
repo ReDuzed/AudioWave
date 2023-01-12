@@ -348,10 +348,16 @@ namespace AudioWave
                     else if (reader == null)
                     {
                         //data = LiveBuffer();
+                        //for (int i = 0; i < points.Length; i += points.Length / Math.Max(length, 1))
                         for (int i = 0; i < points.Length; i++)
                         {
-                            points[i] = new PointF(i, height / 2 * data[i] + height / 2);
+                            float y = height / 2 * (float)(data[i] * (style ? Math.Sin((float)i / width * Math.PI) : 1f)) + height / 2;
+                            points[i] = new PointF(Math.Min(i, points.Length), y);
                         }
+                        //for (int i = 0; i < points.Length; i++)
+                        //{
+                        //    points[i] = new PointF(i, height / 2 * data[i] + height / 2);
+                        //}
                     }
                     if (AuxWindow.CircularStyle)
                         points = CircleEffect(points);
