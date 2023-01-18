@@ -289,6 +289,8 @@ namespace AudioWave
             {
                 using (Graphics graphic = Graphics.FromImage(bmp))
                 {
+                    graphic.FillRectangle(System.Drawing.Brushes.Black, new System.Drawing.Rectangle(0, 0, width, height));
+
                     data = _Buffer(width);
 
                     float num = data.Max();
@@ -361,7 +363,6 @@ namespace AudioWave
                     }
                     if (AuxWindow.CircularStyle)
                         points = CircleEffect(points);
-                    graphic.FillRectangle(System.Drawing.Brushes.Black, new System.Drawing.Rectangle(0, 0, width, height));
                     if (points.Length > 1)
                     {
                         if ((MainWindow.Seed += 10) >= int.MaxValue - 10)
