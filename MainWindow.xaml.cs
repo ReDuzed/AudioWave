@@ -27,6 +27,7 @@ namespace AudioWave
         internal SideWindow side;
         internal AuxWindow aux;
         internal static int Seed = 1;
+        public static bool RenderColor = false;
         public MainWindow()
         {
             InitializeComponent();
@@ -145,6 +146,19 @@ namespace AudioWave
                 audioOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
                 audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
                 audioOut.Init(waveReader);
+                audioOut.Play();
+            }
+        }
+        public void Init(BufferedWaveProvider buff, MMDevice output)
+        {
+            data = _Buffer(0);
+            if (audioOut != null)
+            {
+                audioOut.PlaybackStopped -= MainWindow.Instance.side.On_PlaybackStopped;
+                audioOut.Dispose();
+                audioOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
+                audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
+                audioOut.Init(buff);
                 audioOut.Play();
             }
         }
@@ -392,13 +406,29 @@ namespace AudioWave
                         oldPoints = points;
                     }
                 }
-                var bmpData = bmp.LockBits(new System.Drawing.Rectangle(0, 0, width, height), System.Drawing.Imaging.ImageLockMode.ReadOnly, bmp.PixelFormat);
-                Window.graph.Source = BitmapSource.Create(width, height, 96f, 96f, PixelFormats.Bgr24, BitmapPalettes.BlackAndWhite, bmpData.Scan0, stride * height, stride);
-                bmp.UnlockBits(bmpData);
+                //  Render to WPF ImageSource object
+                if (MainWindow.RenderColor)
+                { 
+                    stride = (int)width * ((PixelFormats.Bgr24.BitsPerPixel + 7) / 8);
+                    var data = bmp.LockBits(new System.Drawing.Rectangle(0, 0, (int)width, (int)height), System.Drawing.Imaging.ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+                    Window.graph.Source = BitmapSource.Create((int)width, (int)height, 96f, 96f, PixelFormats.Bgr24, null, data.Scan0, stride * height, stride);
+                    bmp.UnlockBits(data);
+                }
+                else
+                { 
+                    var bmpData = bmp.LockBits(new System.Drawing.Rectangle(0, 0, width, height), System.Drawing.Imaging.ImageLockMode.ReadOnly, bmp.PixelFormat);
+                    Window.graph.Source = BitmapSource.Create(width, height, 96f, 96f, PixelFormats.Bgr24, BitmapPalettes.BlackAndWhite, bmpData.Scan0, stride * height, stride);
+                    bmp.UnlockBits(bmpData);
+                }
             }
         }
         private float[] LiveBuffer()
         {
+            if (graph == null)
+            {
+                var format = defaultOutput.AudioClient.MixFormat;
+                graph = new BufferedWaveProvider(new WaveFormat(format.SampleRate, format.BitsPerSample, format.Channels));
+            }
             float[] buffer = new float[graph.BufferLength];
             graph.ToSampleProvider().Read(buffer, 0, buffer.Length);
             return buffer;

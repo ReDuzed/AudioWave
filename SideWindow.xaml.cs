@@ -109,41 +109,11 @@ namespace AudioWave
         {
             AuxWindow.Instance.check_loopback.IsChecked = false;
 
-            var _format = Window.wave.defaultOutput.AudioClient.MixFormat;
-            MemoryStream mem = new MemoryStream();
-            WaveFormat format = _format;
-            if (Playlist[current].EndsWith(".mp3"))
-            {
-                Mp3Frame mp3;
-                byte[] buffer = null;
-                using (Mp3FileReader read = new Mp3FileReader(Playlist[current]))
-                {
-                    using (WaveFileWriter write = new WaveFileWriter("_audio.wav", new WaveFormat(_format.SampleRate, _format.Channels)))
-                    {
-                        while ((mp3 = Mp3Frame.LoadFromStream(read)) != null)
-                        {
-                            //var name = DmoEnumerator.GetAudioDecoderNames().ToArray();
-                            //new WindowsMediaMp3Decoder().MediaObject.GetInputType(1, 0).Value.GetWaveFormat();
-                            //var m = new WaveFormatCustomMarshaler();
-
-                            buffer = new byte[mp3.FrameLength];
-                            AcmMp3FrameDecompressor dmo = new AcmMp3FrameDecompressor(read.WaveFormat);
-                            try
-                            {
-                                if (buffer != null && buffer.Length > 0)
-                                { 
-                                    write.Write(buffer, 0, buffer.Length);
-                                }
-                                dmo.DecompressFrame(mp3, buffer, 0);
-                                buffer = null;
-                            }
-                            catch (Exception exc) 
-                            {
-                                continue; 
-                            }
-                        }
-                    }
-                }
+            BufferedWaveProvider buff = null;
+            bool isMp3 = Playlist[current].EndsWith(".mp3");
+            if (isMp3)
+            { 
+                DecompressMp3IntoFile("_audio.wav");
             }
 
             playing = true;
@@ -152,7 +122,14 @@ namespace AudioWave
             if (playlist.SelectedIndex != -1)
             {
                 WriteCurrent(Playlist[current]);
-                Window.wave.Init("_audio.wav", Window.wave.defaultOutput);
+                if (!isMp3)
+                { 
+                    Window.wave.Init(Playlist[current], Window.wave.defaultOutput);
+                }
+                else
+                {
+                    Window.wave.Init("_audio.wav", Window.wave.defaultOutput);
+                }
                 //Window.wave.Init(Playlist[current], Window.wave.defaultOutput);
                 //playlist.SelectedIndex = -1;
             }
@@ -162,6 +139,79 @@ namespace AudioWave
                 {
                     Window.wave?.audioOut?.Play();
                     WriteCurrent(Playlist[0]);
+                }
+            }
+        }
+        private BufferedWaveProvider DecompressMp3(bool isMp3)
+        {
+            var _format = Window.wave.defaultOutput.AudioClient.MixFormat;
+            BufferedWaveProvider buff = new BufferedWaveProvider(_format);
+            WaveFormat format = _format;
+            if (isMp3)
+            {
+                Mp3Frame mp3;
+                byte[] buffer = null;
+                using (Mp3FileReader read = new Mp3FileReader(Playlist[current]))
+                {
+                    while ((mp3 = Mp3Frame.LoadFromStream(read)) != null)
+                    {
+                        //var name = DmoEnumerator.GetAudioDecoderNames().ToArray();
+                        //new WindowsMediaMp3Decoder().MediaObject.GetInputType(1, 0).Value.GetWaveFormat();
+                        //var m = new WaveFormatCustomMarshaler();
+
+                        buffer = new byte[mp3.FrameLength];
+                        AcmMp3FrameDecompressor dmo = new AcmMp3FrameDecompressor(read.WaveFormat);
+                        try
+                        {
+                            if (buffer != null && buffer.Length > 0)
+                            {
+                                buff.AddSamples(buffer, 0, buffer.Length);
+                                buffer = null;
+                            }
+                            dmo.DecompressFrame(mp3, buffer, 0);
+                        }
+                        catch (Exception exc)
+                        {
+                            continue;
+                        }
+                    }
+                }
+            }
+            return buff;
+        }
+        private void DecompressMp3IntoFile(string file)
+        {
+            var _format = Window.wave.defaultOutput.AudioClient.MixFormat;
+            MemoryStream mem = new MemoryStream();
+            WaveFormat format = _format;
+            Mp3Frame mp3;
+            byte[] buffer = null;
+            using (Mp3FileReader read = new Mp3FileReader(Playlist[current]))
+            {
+                using (WaveFileWriter write = new WaveFileWriter(file, new WaveFormat(_format.SampleRate, _format.Channels)))
+                {
+                    while ((mp3 = Mp3Frame.LoadFromStream(read)) != null)
+                    {
+                        //var name = DmoEnumerator.GetAudioDecoderNames().ToArray();
+                        //new WindowsMediaMp3Decoder().MediaObject.GetInputType(1, 0).Value.GetWaveFormat();
+                        //var m = new WaveFormatCustomMarshaler();
+
+                        buffer = new byte[mp3.FrameLength];
+                        AcmMp3FrameDecompressor dmo = new AcmMp3FrameDecompressor(read.WaveFormat);
+                        try
+                        {
+                            if (buffer != null && buffer.Length > 0)
+                            {
+                                write.Write(buffer, 0, buffer.Length);
+                            }
+                            dmo.DecompressFrame(mp3, buffer, 0);
+                            buffer = null;
+                        }
+                        catch (Exception exc)
+                        {
+                            continue;
+                        }
+                    }
                 }
             }
         }
