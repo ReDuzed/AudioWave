@@ -114,7 +114,7 @@ namespace AudioWave
             //BufferedWaveProvider buff = null;
             bool isMp3 = Playlist[current].EndsWith(".mp3");
             if (isMp3)
-            { 
+            {
                 DecompressMp3IntoFile("_audio.wav");
             }
 
