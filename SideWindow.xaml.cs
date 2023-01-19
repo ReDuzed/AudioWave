@@ -111,7 +111,7 @@ namespace AudioWave
             playing = true;
             toggled = true;
             current = playlist.SelectedIndex;
-            BufferedWaveProvider buff = null;
+            //BufferedWaveProvider buff = null;
             bool isMp3 = Playlist[current].EndsWith(".mp3");
             if (isMp3)
             {
@@ -144,48 +144,19 @@ namespace AudioWave
         private BufferedWaveProvider DecompressMp3(bool isMp3 = true)
         {
             var _format = Window.wave.defaultOutput.AudioClient.MixFormat;
-            BufferedWaveProvider buff = new BufferedWaveProvider(_format);
             WaveFormat format = _format;
+            BufferedWaveProvider buff = null;
             if (isMp3)
             {
                 Mp3Frame mp3;
                 byte[] buffer = null;
                 using (Mp3FileReader read = new Mp3FileReader(Playlist[current]))
                 {
-                    while ((mp3 = Mp3Frame.LoadFromStream(read)) != null)
+                    buff = new BufferedWaveProvider(_format) 
                     {
-                        var m = new WaveFormatCustomMarshaler().MarshalManagedToNative(read.WaveFormat);
-                        format = WaveFormat.MarshalFromPtr(m);
-                        buffer = new byte[mp3.FrameLength];
-                        AcmMp3FrameDecompressor dmo = new AcmMp3FrameDecompressor(format);
-                        try
-                        {
-                            dmo.DecompressFrame(mp3, buffer, 0);
-                        }
-                        catch { }
-                        finally
-                        {
-                            if (buffer != null && buffer.Length > 0)
-                            {
-                                buff.AddSamples(buffer, 0, buffer.Length);
-                            }
-                        }
-                    }
-                }
-            }
-            return buff;
-        }
-        private void DecompressMp3IntoFile(string file)
-        {
-            var _format = Window.wave.defaultOutput.AudioClient.MixFormat;
-            MemoryStream mem = new MemoryStream();
-            WaveFormat format = _format;
-            Mp3Frame mp3;
-            byte[] buffer = null;
-            using (Mp3FileReader read = new Mp3FileReader(Playlist[current]))
-            {
-                using (WaveFileWriter write = new WaveFileWriter(file, new WaveFormat(_format.SampleRate, _format.Channels)))
-                {
+                        BufferLength = (int)read.Length,
+                        ReadFully = true
+                    };
                     while ((mp3 = Mp3Frame.LoadFromStream(read)) != null)
                     {
                         var m = new WaveFormatCustomMarshaler().MarshalManagedToNative(read.WaveFormat);
@@ -197,15 +168,61 @@ namespace AudioWave
                             dmo.DecompressFrame(mp3, buffer, 0);
                         }
                         catch 
+                        { 
+                            if (buffer != null && buffer.Length > 0)
+                            {
+                                buff.AddSamples(buffer, 0, buffer.Length);
+                            }
+                            buffer = null;
+                            continue;
+                        }
+                    }
+                }
+            }
+            return buff;
+        }
+        private void DecompressMp3IntoFile(string file)
+        {
+            var _format = Window.wave.defaultOutput.AudioClient.MixFormat;
+            WaveFormat format = _format;
+            Mp3Frame mp3;
+            byte[] buffer = null;
+            using (Mp3FileReader read = new Mp3FileReader(Playlist[current]))
+            {
+                var m = new WaveFormatCustomMarshaler().MarshalManagedToNative(read.WaveFormat);
+                format = WaveFormat.MarshalFromPtr(m);
+                BufferedWaveProvider buff = new BufferedWaveProvider(format);
+                using (WaveFileWriter write = new WaveFileWriter(file, new WaveFormat(format.SampleRate, format.Channels)))
+                {
+                    
+                    AcmMp3FrameDecompressor dmo = new AcmMp3FrameDecompressor(format);
+                    while ((mp3 = Mp3Frame.LoadFromStream(read)) != null)
+                    {
+                        buffer = new byte[mp3.FrameLength];
+                        try
+                        {
+                            dmo.DecompressFrame(mp3, buffer, 0);
+                        }
+                        catch 
                         {
                             if (buffer != null && buffer.Length > 0)
                             {
+                                //  Lower volume
+                                //byte[] result = new byte[mp3.FrameLength];
+                                //buff.AddSamples(buffer, 0, buffer.Length);
+                                //VolumeWaveProvider16 volume = new VolumeWaveProvider16(buff);
+                                //volume.Volume = 0.9f;
+                                //volume.Read(result, 0, result.Length - 1);
+                                //buff.ClearBuffer();
+                                //volume = null;
+                                //  Write result
                                 write.Write(buffer, 0, buffer.Length);
                             }
                             buffer = null;
                             continue;
                         }
                     }
+                    write.Flush();
                 }
             }
         }
