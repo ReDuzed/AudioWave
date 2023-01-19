@@ -4,6 +4,7 @@ using NAudio.Wave;
 using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
@@ -95,6 +96,7 @@ namespace AudioWave
     public class Wave
     {
         internal AudioFileReader reader;
+        internal WaveFileReader waveReader;
         private float[] data;
         private MainWindow Window;
         internal WasapiOut audioOut;
@@ -128,6 +130,21 @@ namespace AudioWave
                 audioOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
                 audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
                 audioOut.Init(reader);
+                audioOut.Play();
+            }
+        }
+        public void Init(Stream stream, MMDevice output)
+        {
+            waveReader = new WaveFileReader(stream);
+            //mixer.AddInputStream(reader);
+            data = _Buffer(0);
+            if (audioOut != null)
+            {
+                audioOut.PlaybackStopped -= MainWindow.Instance.side.On_PlaybackStopped;
+                audioOut.Dispose();
+                audioOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
+                audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
+                audioOut.Init(waveReader);
                 audioOut.Play();
             }
         }

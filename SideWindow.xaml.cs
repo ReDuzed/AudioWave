@@ -14,6 +14,8 @@ using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
 using NAudio.CoreAudioApi;
+using NAudio.Dmo;
+using NAudio.FileFormats.Mp3;
 using NAudio.Wave;
 
 
@@ -107,13 +109,51 @@ namespace AudioWave
         {
             AuxWindow.Instance.check_loopback.IsChecked = false;
 
+            var _format = Window.wave.defaultOutput.AudioClient.MixFormat;
+            MemoryStream mem = new MemoryStream();
+            WaveFormat format = _format;
+            if (Playlist[current].EndsWith(".mp3"))
+            {
+                Mp3Frame mp3;
+                byte[] buffer = null;
+                using (Mp3FileReader read = new Mp3FileReader(Playlist[current]))
+                {
+                    using (WaveFileWriter write = new WaveFileWriter("_audio.wav", new WaveFormat(_format.SampleRate, _format.Channels)))
+                    {
+                        while ((mp3 = Mp3Frame.LoadFromStream(read)) != null)
+                        {
+                            //var name = DmoEnumerator.GetAudioDecoderNames().ToArray();
+                            //new WindowsMediaMp3Decoder().MediaObject.GetInputType(1, 0).Value.GetWaveFormat();
+                            //var m = new WaveFormatCustomMarshaler();
+
+                            buffer = new byte[mp3.FrameLength];
+                            AcmMp3FrameDecompressor dmo = new AcmMp3FrameDecompressor(read.WaveFormat);
+                            try
+                            {
+                                if (buffer != null && buffer.Length > 0)
+                                { 
+                                    write.Write(buffer, 0, buffer.Length);
+                                }
+                                dmo.DecompressFrame(mp3, buffer, 0);
+                                buffer = null;
+                            }
+                            catch (Exception exc) 
+                            {
+                                continue; 
+                            }
+                        }
+                    }
+                }
+            }
+
             playing = true;
             toggled = true;
             current = playlist.SelectedIndex;
             if (playlist.SelectedIndex != -1)
             {
                 WriteCurrent(Playlist[current]);
-                Window.wave.Init(Playlist[current], Window.wave.defaultOutput);
+                Window.wave.Init("_audio.wav", Window.wave.defaultOutput);
+                //Window.wave.Init(Playlist[current], Window.wave.defaultOutput);
                 //playlist.SelectedIndex = -1;
             }
             else
