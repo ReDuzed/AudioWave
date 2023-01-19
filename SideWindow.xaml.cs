@@ -108,17 +108,16 @@ namespace AudioWave
         private void On_Play(object sender, MouseButtonEventArgs e)
         {
             AuxWindow.Instance.check_loopback.IsChecked = false;
-
-            BufferedWaveProvider buff = null;
+            playing = true;
+            toggled = true;
+            current = playlist.SelectedIndex;
+            //BufferedWaveProvider buff = null;
             bool isMp3 = Playlist[current].EndsWith(".mp3");
             if (isMp3)
             { 
                 DecompressMp3IntoFile("_audio.wav");
             }
 
-            playing = true;
-            toggled = true;
-            current = playlist.SelectedIndex;
             if (playlist.SelectedIndex != -1)
             {
                 WriteCurrent(Playlist[current]);

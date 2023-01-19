@@ -58,21 +58,21 @@ namespace AudioWave
         }
         internal static Pen CosineColor(Color color, float amplitude)
         {
-            double cos = Math.Max(0f, Math.Cos(amplitude));
+            double cos = Math.Abs(Math.Cos(amplitude));
             Color c2 = FromDouble(1f,
-                Math.Min(1f, color.R / 255d - cos * (color.R / 255d)),
-                Math.Min(1f, color.G / 255d - cos * (color.G / 255d)),
-                Math.Min(1f, color.B / 255d - cos * (color.B / 255d)));
+                Math.Min(1f, cos * (color.R / 255d)),
+                Math.Min(1f, cos * (color.G / 255d)),
+                Math.Min(1f, cos * (color.B / 255d)));
             return new Pen(c2, 1f);
         }
         internal static Pen CosineColorAlpha(Color color, float amplitude)
         {
-            double cos = Math.Max(0f, Math.Cos(amplitude));
-            double tan = Math.Max(0f, Math.Tan(amplitude));
+            double cos = Math.Abs(Math.Cos(amplitude));
+            double tan = Math.Abs(Math.Tan(amplitude));
             Color c2 = FromDouble(tan,
-                Math.Min(1f, color.R / 255d - cos * (color.R / 255d)),
-                Math.Min(1f, color.G / 255d - cos * (color.G / 255d)),
-                Math.Min(1f, color.B / 255d - cos * (color.B / 255d)));
+                Math.Min(1f, cos * (color.R / 255d)),
+                Math.Min(1f, cos * (color.G / 255d)),
+                Math.Min(1f, cos * (color.B / 255d)));
             return new Pen(c2, 1f);
         }
         internal static void DrawGradient(int x, int y, int width, int center, bool reverse, Color one, Graphics graphics)

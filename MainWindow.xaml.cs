@@ -27,7 +27,7 @@ namespace AudioWave
         internal SideWindow side;
         internal AuxWindow aux;
         internal static int Seed = 1;
-        public static bool RenderColor = false;
+        public static bool RenderColor = true;
         public MainWindow()
         {
             InitializeComponent();
@@ -398,7 +398,8 @@ namespace AudioWave
                     {
                         if ((MainWindow.Seed += 10) >= int.MaxValue - 10)
                             MainWindow.Seed = 1;
-                        var pen = new System.Drawing.Pen(System.Drawing.Brushes.White);
+                        var pen = new System.Drawing.Pen(System.Drawing.Brushes.AliceBlue);
+                        //var pen = Style.CosineColor(System.Drawing.Color.CornflowerBlue, DateTime.Now.Second * 3f);
                         pen.Width = Math.Min(Math.Max(Wave.width, 1), 12);
                         if (AuxWindow.CircularStyle)
                             graphic.DrawLines(pen, points);
