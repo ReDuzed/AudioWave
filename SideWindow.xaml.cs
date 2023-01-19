@@ -195,17 +195,17 @@ namespace AudioWave
                         //var name = DmoEnumerator.GetAudioDecoderNames().ToArray();
                         //new WindowsMediaMp3Decoder().MediaObject.GetInputType(1, 0).Value.GetWaveFormat();
                         //var m = new WaveFormatCustomMarshaler();
-
+                        var m = new WaveFormatCustomMarshaler().MarshalManagedToNative(read.WaveFormat);
+                        format = WaveFormat.MarshalFromPtr(m);
                         buffer = new byte[mp3.FrameLength];
-                        AcmMp3FrameDecompressor dmo = new AcmMp3FrameDecompressor(read.WaveFormat);
+                        AcmMp3FrameDecompressor dmo = new AcmMp3FrameDecompressor(format);
                         try
                         {
                             if (buffer != null && buffer.Length > 0)
-                            {
+                            { 
                                 write.Write(buffer, 0, buffer.Length);
                             }
                             dmo.DecompressFrame(mp3, buffer, 0);
-                            buffer = null;
                         }
                         catch (Exception exc)
                         {
