@@ -112,7 +112,11 @@ namespace AudioWave
                         WaveFileWriter.WriteWavFileToStream(memory, wfr);
                         wfr.Dispose();
                     }
-                    readList.Add(AudioData.NewAudioData(i, files[i], memory));
+                    var data = AudioData.NewAudioData(i, files[i], memory);
+                    if (!readList.Contains(data))
+                    { 
+                        readList.Add(AudioData.NewAudioData(i, files[i], memory));
+                    }
                 }
             }
         }
@@ -144,8 +148,8 @@ namespace AudioWave
 
             AudioData data = default;
             for (int i = 0; i < Playlist.Count; i++)
-            { 
-                if (FileName(readList[i].Name) == FileName(Playlist[i]))
+            {
+                if (FileName(readList[i].Name) == FileName(Playlist[current]))
                 {
                     data = readList[i];
                     break;
@@ -230,7 +234,7 @@ namespace AudioWave
             {
                 WaveFileWriter.WriteWavFileToStream(mem, read);
                 var format = read.WaveFormat;
-                byte[] buffer = RIFF.WaveFormatBuffer(format.SampleRate, format.Channels, format.BitsPerSample, 1, mem.GetBuffer());
+                byte[] buffer = mem.GetBuffer(); // RIFF.WaveFormatBuffer(format.SampleRate, format.Channels, format.BitsPerSample, 1, mem.GetBuffer());
                 mem.Dispose();
                 mem = new MemoryStream();
                 mem.Write(buffer, 0, buffer.Length);
@@ -302,6 +306,7 @@ namespace AudioWave
                 ((ListBoxItem)playlist.Items[i]).MouseDoubleClick -= Item_MouseDoubleClick;
                 readList[i].memory?.Dispose();
             }
+
             playlist.Items.Clear();
             Playlist.Clear();
             readList.Clear();
@@ -328,6 +333,12 @@ namespace AudioWave
                     list[n] = list[n].Substring(list[n].IndexOf(':') + 2);
                 pathList[n] = Playlist[n];
             }
+            var _nameList = new string[Playlist.Count];
+
+            foreach (ListBoxItem item in playlist.Items)
+            {
+                item.MouseDoubleClick -= Item_MouseDoubleClick;
+            }
 
             if (!shuffle)
             {
@@ -337,7 +348,11 @@ namespace AudioWave
                 Playlist = pathList.OrderBy(t => t).ToList();
                 for (int n = 0; n < list.Length; n++)
                 {
-                    playlist.Items.Add(list[n]);
+                    //playlist.Items.Add(list[n]);
+                    ListBoxItem item = new ListBoxItem();
+                    item.Content = list[n];
+                    item.MouseDoubleClick += Item_MouseDoubleClick;
+                    playlist.Items.Add(item);
                 }
                 return;
             }
@@ -351,15 +366,19 @@ namespace AudioWave
                 {
                     int rand = new System.Random(MainWindow.Seed.GetHashCode()).Next(list.Length);
 
-                    while (playlist.Items.Contains(name = list[rand]))
+                    while (_nameList.Contains(name = list[rand]))
                     {
-                        if ((MainWindow.Seed += 10) >= int.MaxValue - 10)
+                        if ((MainWindow.Seed += DateTime.Now.Millisecond) >= int.MaxValue - 1000)
                             MainWindow.Seed = 1;
-                        rand = new System.Random(DateTime.Now.Millisecond).Next(list.Length);
+                        rand = new System.Random(MainWindow.Seed).Next(list.Length);
                         continue;
                     }
+                    _nameList[i] = name;
 
-                    playlist.Items.Add(name);
+                    ListBoxItem item = new ListBoxItem();
+                    item.Content = name;
+                    item.MouseDoubleClick += Item_MouseDoubleClick;
+                    playlist.Items.Add(item);
                     Playlist.Add(pathList[rand]);
                     break;
                 }
