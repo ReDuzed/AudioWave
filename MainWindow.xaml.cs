@@ -125,35 +125,18 @@ namespace AudioWave
             capture?.Dispose();
             record?.Dispose();
         }
+        public void Init(WaveFileReader read, MMDevice output)
+        {
+            _Init(new WaveFileReader(read), output);
+        }
         public void Init(string file, MMDevice output)
         {
-            reader = new WaveFileReader(file);
-            //mixer.AddInputStream(reader);
-            data = _Buffer(0);
-            if (audioOut != null)
-            {
-                audioOut.PlaybackStopped -= MainWindow.Instance.side.On_PlaybackStopped;
-                audioOut.Dispose();
-            }
-            audioOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
-            audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
-            audioOut.Init(reader);
-            audioOut.Play();
+            _Init(new WaveFileReader(file), output);
         }
         public void Init(Stream stream, MMDevice output)
         {
-            reader = new WaveFileReader(stream);
-            //mixer.AddInputStream(reader);
-            data = _Buffer(0);
-            if (audioOut != null)
-            {
-                audioOut.PlaybackStopped -= MainWindow.Instance.side.On_PlaybackStopped;
-                audioOut.Dispose();
-                audioOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
-                audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
-                audioOut.Init(reader);
-                audioOut.Play();
-            }
+            stream.Position = 0;
+            _Init(new WaveFileReader(stream), output);
         }
         public void Init(BufferedWaveProvider buff, MMDevice output)
         {
@@ -167,6 +150,20 @@ namespace AudioWave
                 audioOut.Init(buff);
                 audioOut.Play();
             }
+        }
+        private void _Init(WaveFileReader read, MMDevice output)
+        {
+            reader = read;
+            data = _Buffer(0);
+            if (audioOut != null)
+            {
+                audioOut.PlaybackStopped -= MainWindow.Instance.side.On_PlaybackStopped;
+                audioOut.Dispose();
+            }
+            audioOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
+            audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
+            audioOut.Init(reader);
+            audioOut.Play();
         }
         public WaveRecorder record;
         public void InitAux(MMDevice output)

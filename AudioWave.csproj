@@ -100,6 +100,7 @@
       <DependentUpon>AuxWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Decompressor.cs" />
+    <Compile Include="RIFF.cs" />
     <Compile Include="SideWindow.xaml.cs">
       <DependentUpon>SideWindow.xaml</DependentUpon>
     </Compile>
