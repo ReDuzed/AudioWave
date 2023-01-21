@@ -24,6 +24,7 @@ namespace AudioWave
     {
         public static MainWindow Instance;
         internal Wave wave;
+        internal static Wave _Wave => MainWindow.Instance.wave;
         internal SideWindow side;
         internal AuxWindow aux;
         internal static int Seed = 1;
@@ -43,28 +44,17 @@ namespace AudioWave
             }
             catch
             {
+                Environment.Exit(0);
                 return;
             }
         }
 
         internal void On_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            wave.audioOut.Dispose();
-            wave.audioOut = null;
-            if (wave.reader != null)
-                wave.reader.Dispose();
-            if (wave.buffer != null)
-                wave.buffer.ClearBuffer();
-            if (wave.capture != null)
-            {
-                wave.capture.StopRecording();
-                wave.capture.Dispose();
-            }
-            if (wave.record != null)
-                wave.record.Dispose();
+            wave.Stop();
             side.Close();
             aux.Close();
-            Process.GetCurrentProcess().Kill();
+            Environment.Exit(0);
         }
 
         private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -79,7 +69,7 @@ namespace AudioWave
 
         private void Window_LayoutUpdated(object sender, EventArgs e)
         {
-            var timer = new System.Timers.Timer(1000);
+            var timer = new System.Timers.Timer(1000); 
             timer.Elapsed += (object o, System.Timers.ElapsedEventArgs args) =>
             { 
                 Dispatcher.Invoke(() => 
@@ -96,8 +86,7 @@ namespace AudioWave
     }
     public class Wave
     {
-        internal AudioFileReader reader;
-        internal WaveFileReader waveReader;
+        internal WaveFileReader reader;
         private float[] data;
         private MainWindow Window;
         internal WasapiOut audioOut;
@@ -119,9 +108,41 @@ namespace AudioWave
             LoopCapture = new WasapiLoopbackCapture(WasapiLoopbackCapture.GetDefaultLoopbackCaptureDevice());
             LoopCapture.DataAvailable += LoopCapture_DataAvailable;
         }
+        public void Stop(bool stopDeviceOut = false)
+        {
+            if (audioOut != null)
+            { 
+                audioOut.PlaybackStopped -= MainWindow.Instance.side.On_PlaybackStopped;
+                audioOut.Stop();
+            }
+            if (stopDeviceOut)
+            {
+                audioOut?.Dispose();
+                audioOut = null;
+            }
+            reader?.Dispose();
+            capture?.StopRecording();
+            capture?.Dispose();
+            record?.Dispose();
+        }
         public void Init(string file, MMDevice output)
         {
-            reader = new AudioFileReader(file);
+            reader = new WaveFileReader(file);
+            //mixer.AddInputStream(reader);
+            data = _Buffer(0);
+            if (audioOut != null)
+            {
+                audioOut.PlaybackStopped -= MainWindow.Instance.side.On_PlaybackStopped;
+                audioOut.Dispose();
+            }
+            audioOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
+            audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
+            audioOut.Init(reader);
+            audioOut.Play();
+        }
+        public void Init(Stream stream, MMDevice output)
+        {
+            reader = new WaveFileReader(stream);
             //mixer.AddInputStream(reader);
             data = _Buffer(0);
             if (audioOut != null)
@@ -131,21 +152,6 @@ namespace AudioWave
                 audioOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
                 audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
                 audioOut.Init(reader);
-                audioOut.Play();
-            }
-        }
-        public void Init(Stream stream, MMDevice output)
-        {
-            waveReader = new WaveFileReader(stream);
-            //mixer.AddInputStream(reader);
-            data = _Buffer(0);
-            if (audioOut != null)
-            {
-                audioOut.PlaybackStopped -= MainWindow.Instance.side.On_PlaybackStopped;
-                audioOut.Dispose();
-                audioOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
-                audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
-                audioOut.Init(waveReader);
                 audioOut.Play();
             }
         }
@@ -307,7 +313,7 @@ namespace AudioWave
                     GenerateImage();
                 //MainWindow.Instance.graph.Dispatcher.BeginInvoke(method, System.Windows.Threading.DispatcherPriority.Render);
             };
-            new DispatcherTimer(TimeSpan.FromMilliseconds(Fps), DispatcherPriority.Render, method, MainWindow.Instance.Dispatcher);
+            new DispatcherTimer(TimeSpan.FromMilliseconds(Fps), DispatcherPriority.Send, method, MainWindow.Instance.Dispatcher);
             //MainWindow.Instance.graph.Dispatcher.BeginInvoke(method, System.Windows.Threading.DispatcherPriority.Render);
         }
         private void GenerateImage()
@@ -431,7 +437,7 @@ namespace AudioWave
                 graph = new BufferedWaveProvider(new WaveFormat(format.SampleRate, format.BitsPerSample, format.Channels));
             }
             float[] buffer = new float[graph.BufferLength];
-            graph.ToSampleProvider().Read(buffer, 0, buffer.Length);
+            graph.ToSampleProvider()?.Read(buffer, 0, buffer.Length);
             return buffer;
         }
         private float[] _Buffer(int length)
@@ -440,9 +446,9 @@ namespace AudioWave
             { 
                 try
                 { 
-                    long position = reader.Position;
+                    long position = reader == null ? 0 : reader.Position;
                     float[] buffer = new float[length];
-                    reader.ToSampleProvider().Read(buffer, 0, buffer.Length);
+                    reader?.ToSampleProvider()?.Read(buffer, 0, buffer.Length);
                     reader.Position = position;
                     return buffer;
                 }

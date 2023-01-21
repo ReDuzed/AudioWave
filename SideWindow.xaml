@@ -12,7 +12,7 @@
         <Label x:Name="label_play" Content="Play" HorizontalAlignment="Left" Margin="50,376,0,0" VerticalAlignment="Top" Width="36" Height="46" Foreground="#FF969696" MouseEnter="On_MouseEnter" MouseLeave="On_MouseLeave" MouseDown="On_Play"/>
         <Label x:Name="label_pause" Content=";" HorizontalAlignment="Left" Margin="98,376,0,0" VerticalAlignment="Top" FontFamily="Webdings" Width="36" Height="46" RenderTransformOrigin="0.653,-2.174" Foreground="#FF969696" MouseEnter="On_MouseEnter" MouseLeave="On_MouseLeave" MouseDown="On_Pause" FontSize="18"/>
         <Button x:Name="button_load" Content="Load" HorizontalAlignment="Left" Margin="74,340,0,0" VerticalAlignment="Top" Width="75" Click="Button_Click"/>
-        <ListBox x:Name="playlist" HorizontalAlignment="Left" Height="282" Margin="9,10,0,0" VerticalAlignment="Top" Width="205"/>
+        <ListBox x:Name="playlist" HorizontalAlignment="Left" Height="282" Margin="9,10,0,0" VerticalAlignment="Top" Width="205" />
         <Label x:Name="label_remove" Content="Remove" HorizontalAlignment="Left" Margin="50,292,0,0" VerticalAlignment="Top" Width="56" Height="26" Foreground="#FF969696" MouseEnter="On_MouseEnter" MouseLeave="On_MouseLeave" MouseDown="On_MouseClear"/>
         <Label x:Name="label_clear" Content="Clear" HorizontalAlignment="Left" Margin="50,312,0,0" VerticalAlignment="Top" Foreground="#FF969696" RenderTransformOrigin="2.402,0.522" MouseEnter="On_MouseEnter" MouseLeave="On_MouseLeave" MouseDown="On_Clear"/>
         <Label x:Name="label_loop" Content="Loop (1)" HorizontalAlignment="Left" Margin="121,292,0,0" VerticalAlignment="Top" Foreground="#FF969696" RenderTransformOrigin="2.402,0.522" MouseDown="On_Loop"/>

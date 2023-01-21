@@ -32,7 +32,9 @@ namespace AudioWave
         private bool playing;
         private bool looping;
         internal bool toggled;
+        private bool halt = false;
         public List<string> Playlist = new List<string>();
+        //public List<>
         public SideWindow()
         {
             InitializeComponent();
@@ -42,6 +44,7 @@ namespace AudioWave
         }
         public void On_PlaybackStopped(object sender, StoppedEventArgs e)
         {
+            if (halt) return;
             if (looping)
             {
                 Window.wave.reader.Seek(0, System.IO.SeekOrigin.Begin);
@@ -52,10 +55,11 @@ namespace AudioWave
             {
                 if (current++ < Playlist.Count)
                 {
-                    int index = Math.Min(current, Playlist.Count - 1);
-                    WriteCurrent(Playlist[index]);
+                    //int index = Math.Min(current, Playlist.Count - 1);
+                    //WriteCurrent(Playlist[index]);
+                    halt = true;
                     playlist.SelectedIndex = current;
-                    Window.wave.Init(Playlist[index], Window.wave.defaultOutput);
+                    On_Play(sender, null);
                 }
                 else
                 {
@@ -91,15 +95,22 @@ namespace AudioWave
                     Playlist.Add(dialog.FileNames[i]);
                     var item = new ListBoxItem();
                     item.Content = files[i].Substring(0, files[i].Length - 4);
+                    item.MouseDoubleClick += Item_MouseDoubleClick;
                     playlist.Items.Add(item);
                 }
             }
+        }
+
+        private void Item_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            On_Play(null, null);
         }
 
         private void On_MouseClear(object sender, MouseButtonEventArgs e)
         {
             if (playlist.SelectedIndex != -1)
             {
+                ((ListBoxItem)playlist.Items[playlist.SelectedIndex]).MouseDoubleClick -= Item_MouseDoubleClick;
                 Playlist.RemoveAt(playlist.SelectedIndex);
                 playlist.Items.RemoveAt(playlist.SelectedIndex);
             }
@@ -112,7 +123,7 @@ namespace AudioWave
             toggled = true;
             current = playlist.SelectedIndex == -1 ? 0 : playlist.SelectedIndex;
             if (Playlist.Count <= 0) return;
-            //BufferedWaveProvider buff = null;
+
             bool isMp3 = Playlist[current].EndsWith(".mp3");
             if (isMp3)
             {
@@ -121,13 +132,14 @@ namespace AudioWave
 
             WriteCurrent(Playlist[current]);
             if (!isMp3)
-            { 
+            {
                 Window.wave.Init(Playlist[current], Window.wave.defaultOutput);
             }
             else
             {
                 Window.wave.Init("_audio.wav", Window.wave.defaultOutput);
             }
+            halt = false;
         }
         private BufferedWaveProvider DecompressMp3(bool isMp3 = true)
         {
@@ -136,35 +148,16 @@ namespace AudioWave
             BufferedWaveProvider buff = null;
             if (isMp3)
             {
-                Mp3Frame mp3;
-                byte[] buffer = null;
-                using (Mp3FileReader read = new Mp3FileReader(Playlist[current]))
+                using (Mp3FileReader read = new Mp3FileReader(Playlist[current], wf => new DmoMp3FrameDecompressor(wf)))
                 {
                     buff = new BufferedWaveProvider(_format) 
                     {
-                        BufferLength = (int)read.Length,
-                        ReadFully = true
+                        BufferLength = (int)read.Length * 3
                     };
-                    while ((mp3 = Mp3Frame.LoadFromStream(read)) != null)
-                    {
-                        var m = new WaveFormatCustomMarshaler().MarshalManagedToNative(read.WaveFormat);
-                        format = WaveFormat.MarshalFromPtr(m);
-                        buffer = new byte[mp3.FrameLength];
-                        AcmMp3FrameDecompressor dmo = new AcmMp3FrameDecompressor(format);
-                        try
-                        {
-                            dmo.DecompressFrame(mp3, buffer, 0);
-                        }
-                        catch 
-                        { 
-                            if (buffer != null && buffer.Length > 0)
-                            {
-                                buff.AddSamples(buffer, 0, buffer.Length);
-                            }
-                            buffer = null;
-                            continue;
-                        }
-                    }
+                    MemoryStream memory = new MemoryStream();
+                    WaveFileWriter.WriteWavFileToStream(memory, read);
+                    byte[] buffer = memory.GetBuffer();
+                    buff.AddSamples(buffer, 0, buffer.Length);
                 }
             }
             return buff;
@@ -173,6 +166,7 @@ namespace AudioWave
         {
             using (Mp3FileReader read = new Mp3FileReader(Playlist[current], wf => new DmoMp3FrameDecompressor(wf)))
             {
+                Window.wave.Stop();
                 WaveFileWriter.CreateWaveFile16(file, read.ToSampleProvider());
             }
         }
@@ -212,6 +206,10 @@ namespace AudioWave
 
         private void On_Clear(object sender, MouseButtonEventArgs e)
         {
+            for (int i = 0; i < playlist.Items.Count; i++)
+            {
+                ((ListBoxItem)playlist.Items[i]).MouseDoubleClick -= Item_MouseDoubleClick;
+            }
             playlist.Items.Clear();
             Playlist.Clear();
         }
@@ -264,7 +262,7 @@ namespace AudioWave
                     {
                         if ((MainWindow.Seed += 10) >= int.MaxValue - 10)
                             MainWindow.Seed = 1;
-                        rand = new System.Random(MainWindow.Seed.GetHashCode()).Next(list.Length);
+                        rand = new System.Random(DateTime.Now.Millisecond).Next(list.Length);
                         continue;
                     }
 

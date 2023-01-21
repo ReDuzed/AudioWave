@@ -1,4 +1,11 @@
-﻿alpha rc1 -> alpha rc2
+﻿alpha rc2 -> alpha rc3
+# Added
+-> MP3 conversion to WAV format when song loads
+# Changed
+-> Double click songs to play them (and start at that location)
+-> Improved wave form performance
+
+alpha rc1 -> alpha rc2
 # Added
 -> Optional taper on each side of wave form
 # Changed
