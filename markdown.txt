@@ -1,4 +1,11 @@
-﻿### alpha rc3 -> alpha 0.1
+﻿### alpha rc3 -> alpha 0.1.0.3
+#### Added
+* Preloading and unloading while tracks are playing or when started
+#### Changed
+* Shuffling now supports preloading
+* Coordinate correction
+
+### alpha rc3 -> alpha 0.1
 #### Added
 * Preloading and unloading while tracks are playing or when started
 
@@ -19,3 +26,9 @@
 * Drawing update more stable; minimal lag
 #### Notes
 * Mp3 format still has distortions; fix is tentative
+
+### version alpha 0.1
+#### Added 
+* Circular waveform rendering
+#### Changed
+* Window background and label colors

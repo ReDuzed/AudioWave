@@ -40,7 +40,7 @@ namespace AudioWave
             InitializeComponent();
             Instance = this;
             Window = MainWindow.Instance;
-            Window.wave.audioOut = new WasapiOut(MainWindow.Instance.wave.defaultOutput, AudioClientShareMode.Shared, false, 0);
+            Wave.audioOut = new WasapiOut(MainWindow.Instance.wave.defaultOutput, AudioClientShareMode.Shared, false, 0);
         }
         public void On_PlaybackStopped(object sender, StoppedEventArgs e)
         {
@@ -48,7 +48,7 @@ namespace AudioWave
             if (looping)
             {
                 Window.wave.reader.Seek(0, System.IO.SeekOrigin.Begin);
-                Window.wave.audioOut.Play();
+                Wave.audioOut.Play();
                 return;
             }
             if (playing)
@@ -195,7 +195,7 @@ namespace AudioWave
             var current = readList.FirstOrDefault(t => SafeFileName(t.Name) == name);
             _list.Add(current);
             if (index + 1 < Playlist.Count)
-            { 
+            {
                 var next = readList.FirstOrDefault(t => t.Name == SafeFileName(Playlist[index + 1]));
                 _list.Add(next);
             }
@@ -215,13 +215,14 @@ namespace AudioWave
 
         private void On_MouseClear(object sender, MouseButtonEventArgs e)
         {
-            if (playlist.SelectedIndex != -1)
+            int index = playlist.SelectedIndex;
+            if (index != -1)
             {
-                ((ListBoxItem)playlist.Items[playlist.SelectedIndex]).MouseDoubleClick -= Item_MouseDoubleClick;
-                Playlist.RemoveAt(playlist.SelectedIndex);
-                playlist.Items.RemoveAt(playlist.SelectedIndex);
-                readList[playlist.SelectedIndex].memory?.Dispose();
-                readList.RemoveAt(playlist.SelectedIndex);
+                readList[index].memory?.Dispose();
+                readList.RemoveAt(index);
+                ((ListBoxItem)playlist.Items[index]).MouseDoubleClick -= Item_MouseDoubleClick;
+                Playlist.RemoveAt(index);
+                playlist.Items.RemoveAt(index);
             }
         }
 
@@ -379,6 +380,29 @@ namespace AudioWave
             result = result.Substring(0, index);
             return result;
         }
+        private string GetExtension(string file)
+        {
+            string result = file;
+            int index = 0;
+            if (file.Contains("\\"))
+            {
+                result = file.Substring(file.LastIndexOf("\\") + 1);
+            }
+            else if (file.Contains("/"))
+            {
+                result = file.Substring(file.LastIndexOf("/") + 1);
+            }
+            if (file.ToLower().Contains(".mp3"))
+            {
+                index = result.LastIndexOf(".mp3");
+            }
+            else if (file.ToLower().Contains(".wav"))
+            {
+                index = result.LastIndexOf(".wav");
+            }
+            result = result.Substring(index);
+            return result;
+        }
         private void WriteCurrent(string name)
         {
             using (StreamWriter sw = new StreamWriter("current.txt") { NewLine = string.Empty })
@@ -399,16 +423,16 @@ namespace AudioWave
             playing = false;
             if (Window.wave != null && Window.wave.reader != null)
             {
-                Window.wave.audioOut.Stop();
+                Wave.audioOut.Stop();
                 Window.wave.reader.Seek(0, System.IO.SeekOrigin.Begin);
             }
         }
 
         private void On_Pause(object sender, MouseButtonEventArgs e)
         {
-            if (Window.wave?.audioOut?.PlaybackState == PlaybackState.Playing)
+            if (Wave.audioOut?.PlaybackState == PlaybackState.Playing)
             {
-                Window.wave?.audioOut?.Pause();
+                Wave.audioOut?.Pause();
             }
         }
 
@@ -464,6 +488,7 @@ namespace AudioWave
                 playlist.Items.Clear();
                 Playlist.Clear();
                 list = list.OrderBy(t => t).ToArray();
+                readList = readList.OrderBy(t => t.Name).ToList();
                 Playlist = pathList.OrderBy(t => t).ToList();
                 for (int n = 0; n < list.Length; n++)
                 {
@@ -478,6 +503,7 @@ namespace AudioWave
 
             playlist.Items.Clear();
             Playlist.Clear();
+            List<AudioData> _data = new List<AudioData>();
             string name = "";
             for (int i = 0; i < list.Length; i++)
             {
@@ -494,12 +520,9 @@ namespace AudioWave
                     }
                     _nameList[i] = name;
 
-                    var first = readList.First(t => t.Name == name);
-                    int index = readList.IndexOf(first);
-                        first.index = i;
-                        readList.RemoveAt(index);
-                        readList.Insert(i, first);
-
+                    var first = readList.FirstOrDefault(t => t.Name == name);
+                    _data.Add(AudioData.NewAudioData(i, name, pathList[rand], GetExtension(pathList[rand]), first.memory));
+                    
                     ListBoxItem item = new ListBoxItem();
                     item.Content = name;
                     item.MouseDoubleClick += Item_MouseDoubleClick;
@@ -508,6 +531,12 @@ namespace AudioWave
                     break;
                 }
             }
+            for (int i = 0; i < readList.Count; i++)
+            {
+                readList[i].memory?.Dispose();
+            }
+            readList.Clear();
+            readList = _data;
         }
     }
     public struct AudioData
@@ -558,6 +587,22 @@ namespace AudioWave
         public override string ToString()
         {
             return $"Name: {Name}, index: {index}, Ext: {Ext}";
+        }
+        public static bool operator ==(AudioData a, AudioData b)
+        {
+            return a.Name == b.Name && a.Ext == b.Ext;
+        }
+        public static bool operator !=(AudioData a, AudioData b)
+        {
+            return a.Name != b.Name || a.Ext != b.Ext;
+        }
+        public override bool Equals(object obj)
+        {
+            return base.Equals(obj);
+        }
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
         }
     }
 }
