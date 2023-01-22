@@ -1,4 +1,10 @@
-﻿alpha rc2 -> alpha rc3
+﻿alpha rc3 -> alpha 0.1
+# Added
+-> Preloading and unloading while tracks are playing or when started
+# Changed
+-> Shuffling now supports preloading
+
+alpha rc2 -> alpha rc3
 # Added
 -> MP3 conversion to WAV format when song loads
 # Changed

@@ -255,10 +255,23 @@ namespace AudioWave
             }
             if (data.memory != null)
             {
-                data.memory.Seek(0, SeekOrigin.Begin);
-                Window.wave.Init(data.memory, Window.wave.defaultOutput);
+                try
+                { 
+                    data.memory.Seek(0, SeekOrigin.Begin);
+                    Window.wave.Init(data.memory, Window.wave.defaultOutput);
 
-                WriteCurrent(readList[current].Name);
+                    WriteCurrent(readList[current].Name);
+                }
+                catch
+                {
+                    data.memory = null;
+                    PreLoadOne(data.FullPath, ref data);
+
+                    data.memory.Seek(0, SeekOrigin.Begin);
+                    Window.wave.Init(data.memory, Window.wave.defaultOutput);
+
+                    WriteCurrent(readList[current].Name);
+                }
             }
             return;
             #region legacy
@@ -482,10 +495,10 @@ namespace AudioWave
                     _nameList[i] = name;
 
                     var first = readList.First(t => t.Name == name);
-                        first.index = i;
                     int index = readList.IndexOf(first);
+                        first.index = i;
                         readList.RemoveAt(index);
-                        readList.Insert(index, first);
+                        readList.Insert(i, first);
 
                     ListBoxItem item = new ListBoxItem();
                     item.Content = name;
