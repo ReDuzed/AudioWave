@@ -44,7 +44,7 @@ namespace AudioWave
         }
         public void On_PlaybackStopped(object sender, StoppedEventArgs e)
         {
-            if (halt) return;
+            //if (halt) return;
             if (looping)
             {
                 Window.wave.reader.Seek(0, System.IO.SeekOrigin.Begin);
@@ -57,7 +57,7 @@ namespace AudioWave
                 {
                     //int index = Math.Min(current, Playlist.Count - 1);
                     //WriteCurrent(Playlist[index]);
-                    halt = true;
+                    //halt = true;
                     playlist.SelectedIndex = current;
                     On_Play(sender, null);
                 }
@@ -100,6 +100,9 @@ namespace AudioWave
                     item.MouseDoubleClick += Item_MouseDoubleClick;
                     playlist.Items.Add(item);
 
+                    string ext = files[i].Substring(files[i].Length - 4);
+                    #region LEGACY Preloading all tracks
+                    /*
                     MemoryStream memory = null;
                     if (files[i].EndsWith(".mp3"))
                     {
@@ -111,18 +114,102 @@ namespace AudioWave
                         var wfr = new WaveFileReader(fullPath[i]);
                         WaveFileWriter.WriteWavFileToStream(memory, wfr);
                         wfr.Dispose();
-                    }
-                    var data = AudioData.NewAudioData(i, files[i], memory);
+                    } */
+                    #endregion
+                    var data = AudioData.NewAudioData(i, SafeFileName(fullPath[i]), fullPath[i], ext, null);
                     if (!readList.Contains(data))
                     { 
-                        readList.Add(AudioData.NewAudioData(i, files[i], memory));
+                        readList.Add(data);
                     }
+                    //PreLoadHandler((ListBoxItem)playlist.Items[0]);
                 }
             }
+            dialog.Dispose();
+        }
+        private bool PreLoadOne(string file, ref AudioData data)
+        {
+            if (data.memory != null)
+                return false;
+            MemoryStream memory = null;
+            if (file.EndsWith(".mp3"))
+            {
+                memory = DecompressMp3IntoStream(file);
+            }
+            else if (memory == null)
+            {
+                memory = new MemoryStream();
+                var wfr = new WaveFileReader(file);
+                WaveFileWriter.WriteWavFileToStream(memory, wfr);
+                wfr.Dispose();
+            }
+            data.memory = memory;
+            return true;
+        }
+        private void PreLoadNext(AudioData[] next)
+        {
+            for (int i = 0; i < next.Length; i++)
+            { 
+                if (next[i].Name == null || next[i].memory != null)
+                    continue;
+                MemoryStream memory = null;
+                if (next[i].Ext == ".mp3")
+                {
+                    memory = DecompressMp3IntoStream(next[i].FullPath);
+                }
+                else if (memory == null)
+                {
+                    memory = new MemoryStream();
+                    var wfr = new WaveFileReader(next[i].FullPath);
+                    WaveFileWriter.WriteWavFileToStream(memory, wfr);
+                    wfr.Dispose();
+                }
+                next[i].memory = memory;
+                readList.RemoveAt(next[i].index);
+                readList.Insert(next[i].index, next[i]);
+            }
+            var _list = next.ToList();
+        }
+        private void PreLoadHandler(ListBoxItem item)
+        {
+            string name = item.Content.ToString();
+            var array = GetNextTracks(name);
+            PreLoadNext(array);
+            UnloadExtra(array);
+        }
+        private void UnloadExtra(AudioData[] data)
+        {
+            readList.ForEach(t => { if (!data.Contains(t)) t.memory?.Dispose(); t.memory = null; });
+        }
+        private AudioData[] GetNextTracks(string name)
+        {
+            var _list = new List<AudioData>();
+            int index = 0;
+            for (int i = 0; i < Playlist.Count; i++)
+            {
+                if (name == SafeFileName(Playlist[i]))
+                {
+                    index = i;
+                    break;
+                }
+            }
+            var current = readList.FirstOrDefault(t => SafeFileName(t.Name) == name);
+            _list.Add(current);
+            if (index + 1 < Playlist.Count)
+            { 
+                var next = readList.FirstOrDefault(t => t.Name == SafeFileName(Playlist[index + 1]));
+                _list.Add(next);
+            }
+            if (index + 2 < Playlist.Count)
+            {
+                var next2 = readList.FirstOrDefault(t => t.Name == SafeFileName(Playlist[index + 2]));
+                _list.Add(next2);
+            }
+            return _list.ToArray();
         }
 
         private void Item_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
+            PreLoadHandler((ListBoxItem)sender);
             On_Play(null, null);
         }
 
@@ -149,16 +236,30 @@ namespace AudioWave
             AudioData data = default;
             for (int i = 0; i < Playlist.Count; i++)
             {
-                if (FileName(readList[i].Name) == FileName(Playlist[current]))
+                if (readList[i].Name == SafeFileName(Playlist[current]))
                 {
                     data = readList[i];
+                    if (data.memory == null)
+                    {
+                        PreLoadOne(data.FullPath, ref data);
+                    }
+                    Task.Factory.StartNew(() => 
+                    {
+                        if (readList[i + 1].memory == null)
+                        {
+                            PreLoadHandler((ListBoxItem)playlist.Items[current]);
+                        }                                         
+                    });
                     break;
                 }
             }
-            data.memory.Seek(0, SeekOrigin.Begin);
-            Window.wave.Init(data.memory, Window.wave.defaultOutput);
+            if (data.memory != null)
+            {
+                data.memory.Seek(0, SeekOrigin.Begin);
+                Window.wave.Init(data.memory, Window.wave.defaultOutput);
 
-            WriteCurrent(readList[current].Name);
+                WriteCurrent(readList[current].Name);
+            }
             return;
             #region legacy
             AuxWindow.Instance.check_loopback.IsChecked = false;
@@ -242,7 +343,7 @@ namespace AudioWave
             }
             return success ? mem : null;
         }
-        private string FileName(string file)
+        private string SafeFileName(string file)
         {
             string result = file;
             int index = 0;
@@ -269,9 +370,14 @@ namespace AudioWave
         {
             using (StreamWriter sw = new StreamWriter("current.txt") { NewLine = string.Empty })
             {
-                name = name.Substring(0, name.LastIndexOf("."));
+                if (name.Contains("."))
+                { 
+                    name = name.Substring(0, name.LastIndexOf("."));
+                }
                 if (name.Contains(@"\"))
+                { 
                     sw.Write(name.Substring(name.LastIndexOf(@"\") + 1));
+                }
                 else sw.Write(name);
             }
         }
@@ -375,6 +481,12 @@ namespace AudioWave
                     }
                     _nameList[i] = name;
 
+                    var first = readList.First(t => t.Name == name);
+                        first.index = i;
+                    int index = readList.IndexOf(first);
+                        readList.RemoveAt(index);
+                        readList.Insert(index, first);
+
                     ListBoxItem item = new ListBoxItem();
                     item.Content = name;
                     item.MouseDoubleClick += Item_MouseDoubleClick;
@@ -387,24 +499,52 @@ namespace AudioWave
     }
     public struct AudioData
     {
-        private AudioData(int index, string name, MemoryStream memory)
+        private AudioData(int index, string name, string fullPath, string ext, MemoryStream memory)
         {
             this.memory = memory;
             //this.reader = read;
+            this.Ext = ext;
             this.Name = name;
+            this.FullPath = fullPath;
             this.index = index;
         }
-        public static AudioData NewAudioData(int index, string name, MemoryStream memory)
+        public static AudioData NewAudioData(int index, string name, string fullPath, string ext, MemoryStream memory)
         {
-            return new AudioData(index, name, memory);
+            return new AudioData(index, name, fullPath, ext, memory);
+        }
+        public static string SafeFileName(AudioData data)
+        {
+            string file = data.FullPath;
+            string result = "";
+            int index = 0;
+            if (file.Contains("\\"))
+            {
+                result = file.Substring(file.LastIndexOf("\\") + 1);
+            }
+            else if (file.Contains("/"))
+            {
+                result = file.Substring(file.LastIndexOf("/") + 1);
+            }
+            if (file.ToLower().Contains(".mp3"))
+            {
+                index = result.LastIndexOf(".mp3");
+            }
+            else if (file.ToLower().Contains(".wav"))
+            {
+                index = result.LastIndexOf(".wav");
+            }
+            result = result.Substring(0, index);
+            return result;
         }
         //public WaveFileReader reader;
         public MemoryStream memory;
+        public string Ext;
         public string Name;
+        public string FullPath;
         public int index;
         public override string ToString()
         {
-            return $"Name: {Name}, index: {index}";
+            return $"Name: {Name}, index: {index}, Ext: {Ext}";
         }
     }
 }
