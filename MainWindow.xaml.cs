@@ -316,6 +316,7 @@ namespace AudioWave
         private void GenerateImage()
         {
             PointF[] oldPoints = new PointF[] { };
+            int verticalOffY = 15;    //  For moving the entire graph vertically
             int width = (int)Window.graph.Width;
             int height = (int)Window.graph.Height;
             int stride = width * ((PixelFormats.Bgr24.BitsPerPixel + 7) / 8);
@@ -372,12 +373,13 @@ namespace AudioWave
                                 flag = false;
                             }
                         }
-                        for (int i = points.Length - 1; i > 0 ; i--)
+                        for (int i = points.Length - 1; i >= 0 ; i--)
                         {
                             if (points[i].X == 0f)
                                 points[i].X = i;
                             if (points[i].Y == 0f)
                                 points[i].Y = points[i - 1].Y;
+                            points[i].Y -= verticalOffY; 
                         }
                         points[points.Length - 1] = points[points.Length - 2];
                     }
