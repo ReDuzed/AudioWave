@@ -1,5 +1,7 @@
-alpha 0.1.0.3 -> alpha 0.1.0.6
-# Fixed
--> Remove and clear
--> Shuffle skipping first index
--> Turning shuffle off indexing error
+alpha 0.1.0.6 -> 1.0a
+# Changed
+-> Pause option stops and starts
+-> Window positions are oriented at start
+# Added
+-> Minimize
+-> Update prompt
