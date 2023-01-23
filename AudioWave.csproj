@@ -157,12 +157,6 @@
     <Resource Include="changelog.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="C:\Users\Makoto\Desktop\desktop\Apps\src\CirclePrefect dll\CirclePrefect.csproj">
-      <Project>{25edec74-a31d-4036-ad42-6e0427678e5c}</Project>
-      <Name>CirclePrefect</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="markdown.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

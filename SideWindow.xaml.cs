@@ -34,7 +34,7 @@ namespace AudioWave
         internal bool toggled;
         private bool halt = false;
         public List<string> Playlist = new List<string>();
-        public List<AudioData> readList = new List<AudioData>();
+        public static List<AudioData> readList = new List<AudioData>();
         public SideWindow()
         {
             InitializeComponent();
@@ -47,7 +47,7 @@ namespace AudioWave
             //if (halt) return;
             if (looping)
             {
-                Window.wave.reader.Seek(0, System.IO.SeekOrigin.Begin);
+                Wave.reader.Seek(0, System.IO.SeekOrigin.Begin);
                 Wave.audioOut.Play();
                 return;
             }
@@ -117,10 +117,7 @@ namespace AudioWave
                     } */
                     #endregion
                     var data = AudioData.NewAudioData(i, SafeFileName(fullPath[i]), fullPath[i], ext, null);
-                    if (!readList.Contains(data))
-                    { 
-                        readList.Add(data);
-                    }
+                    readList.Add(data);
                     //PreLoadHandler((ListBoxItem)playlist.Items[0]);
                 }
             }
@@ -218,8 +215,11 @@ namespace AudioWave
             int index = playlist.SelectedIndex;
             if (index != -1)
             {
-                readList[index].memory?.Dispose();
-                readList.RemoveAt(index);
+                if (index < readList.Count)
+                {   
+                    readList[index].memory?.Dispose();
+                    readList.RemoveAt(index);
+                }
                 ((ListBoxItem)playlist.Items[index]).MouseDoubleClick -= Item_MouseDoubleClick;
                 Playlist.RemoveAt(index);
                 playlist.Items.RemoveAt(index);
@@ -357,6 +357,12 @@ namespace AudioWave
             }
             return success ? mem : null;
         }
+        public static MemoryStream IWaveToStream(WaveFileReader read)
+        {
+            MemoryStream mem = new MemoryStream();
+            WaveFileWriter.WriteWavFileToStream(mem, read);
+            return mem;
+        }
         private string SafeFileName(string file)
         {
             string result = file;
@@ -403,6 +409,15 @@ namespace AudioWave
             result = result.Substring(index);
             return result;
         }
+        public static string ReadCurrent()
+        {
+            string result = "";
+            using (StreamReader sr = new StreamReader("current.txt"))
+            {
+                result = sr.ReadLine();
+            }
+            return result;
+        }
         private void WriteCurrent(string name)
         {
             using (StreamWriter sw = new StreamWriter("current.txt") { NewLine = string.Empty })
@@ -421,10 +436,10 @@ namespace AudioWave
         public void On_Stop(object sender, MouseButtonEventArgs e)
         {
             playing = false;
-            if (Window.wave != null && Window.wave.reader != null)
+            if (Window.wave != null && Wave.reader != null)
             {
                 Wave.audioOut.Stop();
-                Window.wave.reader.Seek(0, System.IO.SeekOrigin.Begin);
+                Wave.reader.Seek(0, System.IO.SeekOrigin.Begin);
             }
         }
 
@@ -434,6 +449,7 @@ namespace AudioWave
             {
                 Wave.audioOut?.Pause();
             }
+            else Wave.audioOut?.Play();
         }
 
         private void On_Loop(object sender, MouseButtonEventArgs e)

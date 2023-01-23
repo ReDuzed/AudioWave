@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         Title="Audio Wave" MinWidth="200" MinHeight="150" Height="465" Width="800" MaxHeight="465" MaxWidth="800" ResizeMode="CanResize" Closing="On_Closing" SizeChanged="Window_SizeChanged" Initialized="Window_LayoutUpdated">
     <Grid>
-        <Rectangle x:Name="background" Fill="#FF474747" HorizontalAlignment="Left" Height="450" Stroke="Black" VerticalAlignment="Top" Width="800"/>
+        <Rectangle x:Name="background" Fill="Black" HorizontalAlignment="Left" Height="450" Stroke="Black" VerticalAlignment="Top" Width="800"/>
         <Image x:Name="graph" HorizontalAlignment="Left" Height="450" VerticalAlignment="Top" Width="800"/>
     </Grid>
 </Window>

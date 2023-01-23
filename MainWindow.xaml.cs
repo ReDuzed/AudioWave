@@ -7,7 +7,9 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Media;
@@ -31,10 +33,13 @@ namespace AudioWave
         public static bool RenderColor = false;
         public MainWindow()
         {
+            ProcessStartInfo info = new ProcessStartInfo(".\\UpdateClient.exe", $"--version 0.1.0.5 --targetexe AudioWave --updateurl https://github.com/ReDuzed/AudioWave/releases/download/ --changelogurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/changelog --versionurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/version --zipname audio.wave-v --processid {Process.GetCurrentProcess().Id}");
+            Process proc = Process.Start(info);
             InitializeComponent();
             Instance = this;
             wave = new Wave();
             wave.defaultOutput = new MMDeviceEnumerator().GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            
             try
             {
                 side = new SideWindow();
@@ -86,13 +91,13 @@ namespace AudioWave
     }
     public class Wave
     {
-        internal WaveFileReader reader;
+        internal static WaveFileReader reader;
         private float[] data;
         private MainWindow Window;
-        internal WasapiOut audioOut;
+        public static WasapiOut audioOut;
         public MMDevice defaultOutput;
         public MMDevice defaultInput;
-        public WasapiCapture capture;
+        public static WasapiCapture capture;
         public BufferedWaveProvider buffer;
         public bool monitor, once;
         public WasapiOut monitorOut;
@@ -121,9 +126,69 @@ namespace AudioWave
                 audioOut = null;
             }
             reader?.Dispose();
-            capture?.StopRecording();
-            capture?.Dispose();
+            if (capture != null)
+            { 
+                capture.DataAvailable -= Capture_DataAvailable;
+                capture.StopRecording();
+                capture.Dispose();
+            }
             record?.Dispose();
+        }
+        public static void EqMixing(WaveFileReader read)
+        {
+            //  Clone active file reader
+            long position = read.Position;
+            MemoryStream _mem = new MemoryStream();
+            read.CopyTo(_mem);
+            read.Position = position;
+            WaveFileReader clone = new WaveFileReader(_mem);
+
+            //  Retrieve original header
+            WaveFileReader _get = clone;
+            byte[] header = new byte[44];
+            _get.Position = 0;
+            _get.Read(header, 0, header.Length);
+            
+            //  Get samples
+            float[] buffer = new float[clone.Length - clone.Position];
+            read.ToSampleProvider().Read(buffer, 0, buffer.Length);
+            
+            //  EQ filter
+            if (filter == null) { filter = new BiQuadFilter[read.WaveFormat.Channels, EqData.Data.Length]; }
+            for (int j = 0; j < 3; j++)
+            {
+                for (int band = 0; band < filter.GetLength(1); band++)
+                {
+                    int ch = j % read.WaveFormat.Channels;
+                    if (filter[ch, band] != null)
+                    {
+                        buffer[j] = filter[ch, band].Transform(buffer[j]);
+                    }
+                }
+            }
+            
+            //  Init writing to stream
+            var mem = new MemoryStream();
+            var _memCopy = new MemoryStream();
+            var write = new WaveFileWriter(_memCopy, clone.WaveFormat);
+            
+            //  Write samples and header
+            mem.Position = 0;
+            mem.Write(header, 0, header.Length);
+            write.WriteSamples(buffer, 0, buffer.Length);
+            //  Convert samples into byte array
+            byte[] byteBuffer = new byte[_memCopy.Length];
+            _memCopy.Read(byteBuffer, 0, byteBuffer.Length);
+            mem.Write(byteBuffer, 0, byteBuffer.Length);
+            mem.Position = 0;
+
+            //  Clearing unused objects
+            write.Dispose();
+            _get.Dispose();
+            clone.Dispose();
+
+            //  Init this stream into the audio output
+            Wave.Instance.Init(mem, Wave.Instance.defaultOutput, true, false, read.Position);
         }
         public void Init(WaveFileReader read, MMDevice output)
         {
@@ -133,10 +198,16 @@ namespace AudioWave
         {
             _Init(new WaveFileReader(file), output);
         }
-        public void Init(Stream stream, MMDevice output)
+        public void Init(Stream stream, MMDevice output, bool dispose = true, bool resetPosition = true, long position = -1)
         {
-            stream.Position = 0;
-            _Init(new WaveFileReader(stream), output);
+            if (resetPosition)
+            { 
+                if (position == -1)
+                    stream.Position = 0;
+                else stream.Position = position;
+            }
+            if (dispose) reader?.Dispose();
+            _Init(new WaveFileReader(stream), output, position);
         }
         public void Init(BufferedWaveProvider buff, MMDevice output)
         {
@@ -151,7 +222,7 @@ namespace AudioWave
                 audioOut.Play();
             }
         }
-        private void _Init(WaveFileReader read, MMDevice output)
+        private void _Init(WaveFileReader read, MMDevice output, long position = -1)
         {
             reader = read;
             data = _Buffer(0);
@@ -163,6 +234,10 @@ namespace AudioWave
             audioOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
             audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
             audioOut.Init(reader);
+            if (position >= 0)
+            { 
+                reader.Position = position;
+            }
             audioOut.Play();
         }
         public WaveRecorder record;
@@ -183,9 +258,26 @@ namespace AudioWave
         }
         public void InitCapture(MMDevice input)
         {
-            if (input == null)
-                input = new MMDeviceEnumerator().GetDefaultAudioEndpoint(DataFlow.Capture, Role.Multimedia);
-            capture = new WasapiCapture(input, false);
+            MMDeviceEnumerator enumerator;
+            if (!(enumerator = new MMDeviceEnumerator()).HasDefaultAudioEndpoint(DataFlow.Capture, Role.Multimedia))
+            {
+                enumerator.Dispose();
+                return;
+            }
+            try
+            {
+                if (input == null)
+                {
+                    input = enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Multimedia);
+                }
+                capture = new WasapiCapture(input, false);
+            }
+            catch 
+            {
+                enumerator.Dispose();
+                return; 
+            }
+            enumerator.Dispose();
 
             buffer = new BufferedWaveProvider(capture.WaveFormat);
             buffer.DiscardOnBufferOverflow = true;
@@ -193,11 +285,14 @@ namespace AudioWave
             graph = new BufferedWaveProvider(capture.WaveFormat);
             graph.DiscardOnBufferOverflow = true;
             
-            filter = new BiQuadFilter[capture.WaveFormat.Channels, 8];
+            if (filter == null) 
+            { 
+                filter = new BiQuadFilter[capture.WaveFormat.Channels, EqData.Data.Length];
+            }
             
             capture.ShareMode = AudioClientShareMode.Shared;
-            capture.StartRecording();
             capture.DataAvailable += Capture_DataAvailable;
+            capture.StartRecording();
         }
 
         private void LoopCapture_DataAvailable(object sender, WaveInEventArgs e)
@@ -210,27 +305,21 @@ namespace AudioWave
         public bool playback;
         internal static BufferedWaveProvider graph;
         public static float[] eq = new float[8];
-        private BiQuadFilter[,] filter = new BiQuadFilter[,] { };
-        private void Capture_DataAvailable(object sender, WaveInEventArgs e)
+        public static BiQuadFilter[,] filter;
+        internal static byte[] CaptureData;
+        internal static float[] CaptureSamples;
+        bool wait = false;
+        internal void Capture_DataAvailable(object sender, WaveInEventArgs e)
         {
-            float[] read = new float[e.BytesRecorded];
-            Buffer.BlockCopy(e.Buffer, 0, read, 0, e.BytesRecorded);
-            Update();
-            for (int j = 0; j < read.Length; j++)
-            {
-                for (int band = 0; band < filter.GetLength(1); band++)
-                {
-                    int ch = j % capture.WaveFormat.Channels;
-                    if (filter[ch, band] != null)
-                    {
-                        read[j] = filter[ch, band].Transform(read[j]);
-                    }
-                }
-            }
-            byte[] buffer = new byte[e.BytesRecorded];
-            Buffer.BlockCopy(read, 0, buffer, 0, e.BytesRecorded);
-            graph.AddSamples(buffer, 0, e.BytesRecorded);
-            Monitor(buffer, e.BytesRecorded);
+            if (wait) return;
+            wait = true;
+            CaptureData = (byte[])e.Buffer.Clone();
+            graph.AddSamples(CaptureData, 0, e.BytesRecorded);
+            //float[] read = new float[e.BytesRecorded];
+            //Array.Copy(buffer, 0, CaptureData, 0, e.BytesRecorded);
+            //byte[] buffer = new byte[e.BytesRecorded];
+            //Buffer.BlockCopy(read, 0, buffer, 0, e.BytesRecorded);
+            Monitor(CaptureData, e.BytesRecorded);
         }
 
         private void Monitor(byte[] Buffer, int length)
@@ -276,7 +365,6 @@ namespace AudioWave
             }
             return pcm;
         }
-
         private void Update()
         {
             if (!update)
@@ -303,12 +391,16 @@ namespace AudioWave
         public static bool style = false;
         private void Display()
         {
+            bool flag = false;
             method = delegate (object sender, EventArgs e)
             {
+                if (flag) return;
+                flag = true;
                 //Thread.Sleep(Fps);
-                if (reader != null && audioOut.PlaybackState == PlaybackState.Playing || capture != null && capture.CaptureState == CaptureState.Capturing || LoopCapture != null && LoopCapture.CaptureState == CaptureState.Capturing)
+                if ((reader != null && audioOut.PlaybackState == PlaybackState.Playing) || capture != null || (LoopCapture != null && LoopCapture.CaptureState == CaptureState.Capturing))
                     GenerateImage();
                 //MainWindow.Instance.graph.Dispatcher.BeginInvoke(method, System.Windows.Threading.DispatcherPriority.Render);
+                flag = false;
             };
             new DispatcherTimer(TimeSpan.FromMilliseconds(Fps), DispatcherPriority.Send, method, MainWindow.Instance.Dispatcher);
             //MainWindow.Instance.graph.Dispatcher.BeginInvoke(method, System.Windows.Threading.DispatcherPriority.Render);
@@ -326,7 +418,13 @@ namespace AudioWave
                 {
                     graphic.FillRectangle(System.Drawing.Brushes.Black, new System.Drawing.Rectangle(0, 0, width, height));
 
-                    data = _Buffer(width);
+                    if (capture != null && capture.CaptureState == CaptureState.Capturing)
+                    {
+                        data = _Buffer(width, CaptureData);
+                        if (data == null || data.Length == 1) 
+                            return;
+                    }
+                    else data = _Buffer(width);
 
                     float num = data.Max();
                     float num2 = data.Min();
@@ -346,7 +444,7 @@ namespace AudioWave
                         length += indexArray[2];
 
                     PointF[] points = new PointF[width];
-                    if ((capture != null && capture.CaptureState != CaptureState.Capturing) || (reader != null && audioOut.PlaybackState == PlaybackState.Playing))
+                    if ((capture != null && capture.CaptureState == CaptureState.Capturing) || (reader != null && audioOut.PlaybackState == PlaybackState.Playing))
                     {
                         for (int i = 0; i < points.Length; i += points.Length / Math.Max(length, 1))
                         {
@@ -406,9 +504,13 @@ namespace AudioWave
                         var pen = new System.Drawing.Pen(System.Drawing.Brushes.White);
                         //var pen = Style.CosineColor(System.Drawing.Color.CornflowerBlue, DateTime.Now.Second * 3f);
                         pen.Width = Math.Min(Math.Max(Wave.width, 1), 12);
-                        if (AuxWindow.CircularStyle)
-                            graphic.DrawLines(pen, points);
-                        else graphic.DrawCurve(pen, points);
+                        try
+                        { 
+                            if (AuxWindow.CircularStyle)
+                                graphic.DrawLines(pen, points);
+                            else graphic.DrawCurve(pen, points);
+                        }
+                        catch { }
                         oldPoints = points;
                     }
                 }
@@ -427,6 +529,7 @@ namespace AudioWave
                     bmp.UnlockBits(bmpData);
                 }
             }
+            wait = false;
         }
         private float[] LiveBuffer()
         {
@@ -442,9 +545,9 @@ namespace AudioWave
         private float[] _Buffer(int length)
         {
             if (reader != null)
-            { 
+            {
                 try
-                { 
+                {
                     long position = reader == null ? 0 : reader.Position;
                     float[] buffer = new float[length];
                     reader?.ToSampleProvider()?.Read(buffer, 0, buffer.Length);
@@ -457,6 +560,29 @@ namespace AudioWave
                 }
             }
             else return LiveBuffer();
+        }
+        private float[] _Buffer(int width, byte[] array)
+        {
+            if (array == null) 
+                return new float[] { 0f };
+            float[] buffer = new float[array.Length / 4];
+            for (int i = 0; i < width - 4; i += 4)
+            {
+                buffer[i] = BitConverter.ToSingle(array, i);
+            }
+            if (filter == null) { filter = new BiQuadFilter[capture.WaveFormat.Channels, EqData.Data.Length]; }
+            for (int j = 0; j < buffer.Length; j++)
+            {
+                for (int band = 0; band < filter.GetLength(1); band++)
+                {
+                    int ch = j % capture.WaveFormat.Channels;
+                    if (filter[ch, band] != null)
+                    {
+                        buffer[j] = filter[ch, band].Transform(buffer[j]);
+                    }
+                }
+            }
+            return buffer;
         }
         private PointF[] CircleEffect(PointF[] points)
         {
