@@ -29,6 +29,7 @@ namespace AudioWave
         public AuxWindow()
         {
             InitializeComponent();
+            Owner = MainWindow.Instance;
             InitLists();
             label_mic.Foreground = Brushes.Black;
             label_monitor.Foreground = Brushes.Black;
@@ -73,16 +74,13 @@ namespace AudioWave
             {
                 if (activate)
                 {
-                    //SideWindow.Instance.On_Stop(null, null);
-                    MainWindow.Instance.wave.InitCapture(MainWindow.Instance.wave.defaultInput);   
+                    SideWindow.Instance.On_Stop(null, null);
+                    MainWindow.Instance.wave.InitCapture(MainWindow.Instance.wave.defaultInput);
                 }
                 else
                 {
-                    if (Wave.capture != null)
-                    { 
-                        Wave.capture.StopRecording();
-                        Wave.capture.DataAvailable -= MainWindow.Instance.wave.Capture_DataAvailable;
-                    }
+                    if (MainWindow.Instance.wave.capture != null)
+                        MainWindow.Instance.wave.capture.StopRecording();
                 }
             }
             else if (label == label_monitor)
@@ -95,7 +93,7 @@ namespace AudioWave
                 }
                 else
                 {
-                    Wave.audioOut.Stop();
+                    MainWindow.Instance.wave.audioOut.Stop();
                     MainWindow.Instance.wave.monitor = false;
                 }
             }
@@ -207,7 +205,7 @@ namespace AudioWave
             if (!e.Handled) Loopback = (bool)((CheckBox)e.Source).IsChecked;
             if (Loopback)
             {
-                Wave.reader?.Dispose();
+                Wave.Instance.reader?.Dispose();
                 Wave.graph = new BufferedWaveProvider(Wave.LoopCapture.WaveFormat);
                 Wave.graph.DiscardOnBufferOverflow = true;
                 Wave.LoopCapture.StartRecording();
@@ -248,96 +246,10 @@ namespace AudioWave
             Wave.style = false;
         }
 
-        private void textbox_hz_keydown(object sender, KeyEventArgs e)
+        private void Auxiliary_Activated(object sender, EventArgs e)
         {
-            if (e.Key == Key.Enter)
-            {
-                textbox_hz_lostfocus(sender, null);
-                Wave.EqMixing(Wave.reader);
-            }
-        }
-
-        private void textbox_hz_lostfocus(object sender, RoutedEventArgs e)
-        {
-            TextBox text = (TextBox)sender;
-            int num = 0, num2 = 0;
-            if (int.TryParse(text.Text, out int result))
-            {
-                if (result > 9600) result = 9600;
-                num = result - (result % 50);
-                while ((num -= 50) > 0)
-                {
-                    num2++;
-                }
-                if (num2 % 2 == 1)
-                    result += result % 50;
-                else
-                    result -= result % 50;
-            }
-            if (result < 50) result = 50;
-            text.Text = result.ToString();
-            slider_eq.Value = (double)EqData.Data[result / 50].value;
-        }
-
-        private void slider_hz_valuechanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            Slider slider = (Slider)sender;
-            if (short.TryParse(textbox_hz.Text, out short hz))
-            {
-                EqData data = EqData.ChangeValue(hz, (decimal)slider.Value);
-
-                float rate = Wave.audioOut.OutputWaveFormat.SampleRate;
-                if (Wave.filter == null)
-                {
-                    Wave.filter = new BiQuadFilter[Wave.audioOut.OutputWaveFormat.Channels, EqData.Data.Length];
-                }
-                var Filter = Wave.filter;
-
-                for (int i = 0; i < Filter.GetLength(0); i++)
-                for (int j = 0; j < Filter.GetLength(1); j++)
-                {
-                    if (Filter[i, j] == null)
-                        Filter[i, j] = BiQuadFilter.PeakingEQ(rate, data.Hz, 0.8f, (float)data.value);
-                    else
-                        Filter[i, j].SetPeakingEq(rate, data.Hz, 0.8f, (float)data.value);
-                }
-            }
-        }
-    }
-    public struct EqData
-    {
-        private static bool init = false;
-        public static EqData[] Data = new EqData[9600 / 50];
-        public decimal value;
-        public short Hz; 
-        private EqData(short hz, decimal value)
-        {
-            this.Hz = hz;
-            this.value = value;
-        }
-        private static void Init()
-        {
-            Data[0] = new EqData();
-            for (int i = 1; i < Data.Length; i++)
-            {
-                Data[i] = new EqData((short)(i * 50), 0);
-            }
-        }
-        public static EqData ChangeValue(short hz, decimal value)
-        {
-            if (!init)
-            {
-                Init();
-                init = true;
-            }
-            if (hz < 50) hz = 50;
-            int index = hz / 50;
-            Data[index].value = value;
-            return Data[index];
-        }
-        public override string ToString()
-        {
-            return $"Hz: {Hz}, value: {value}";
+            this.Top = MainWindow.Instance.Top;
+            this.Left = MainWindow.Instance.Left + MainWindow.Instance.Width;
         }
     }
 }

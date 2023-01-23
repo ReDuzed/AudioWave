@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:AudioWave"
         mc:Ignorable="d"
-        Title="AuxWindow" WindowStartupLocation="Manual" Height="450" Width="230" ResizeMode="CanMinimize" WindowStyle="ToolWindow" SizeToContent="WidthAndHeight" BorderThickness="0" Closing="On_Closing" Background="#FF474747" >
+        Title="AuxWindow" WindowStartupLocation="Manual" Height="450" Width="230" ResizeMode="CanMinimize" WindowStyle="ToolWindow" SizeToContent="WidthAndHeight" BorderThickness="0" Closing="On_Closing" Background="#FF474747" Activated="Auxiliary_Activated">
     <Grid>
         <Rectangle HorizontalAlignment="Left" Height="422" VerticalAlignment="Top" Width="224"/>
         <ListBox x:Name="list_input" HorizontalAlignment="Left" Height="80" Margin="10,27,0,0" VerticalAlignment="Top" Width="204" ScrollViewer.VerticalScrollBarVisibility="Visible" SelectionChanged="input_Changed"/>
@@ -27,9 +27,11 @@
             <ListBoxItem Content="120"/>
         </ComboBox>
         -->
+        <!--
         <Label Content="Hz" HorizontalAlignment="Left" Margin="190,304,0,0" VerticalAlignment="Top" Foreground="White"/>
         <Slider x:Name="slider_eq" HorizontalAlignment="Left" Margin="10,305,0,0" VerticalAlignment="Top" Width="117" Minimum="-10" Maximum="10" TickPlacement="BottomRight" Orientation="Horizontal" Cursor="Hand" AutoToolTipPlacement="TopLeft" TabIndex="9" ValueChanged="slider_hz_valuechanged" />
         <TextBox x:Name="textbox_hz"  HorizontalAlignment="Left" Margin="132,308,0,0" TextWrapping="Wrap" Text="100" VerticalAlignment="Top" Width="58" KeyDown="textbox_hz_keydown" LostFocus="textbox_hz_lostfocus" ToolTip="Input Hz value" TabIndex="10"/>
+        -->
         <!--
         <Label Content="200" HorizontalAlignment="Left" Margin="10,182,0,0" VerticalAlignment="Top" Foreground="#FF646464"/>
         <Label Content="400" HorizontalAlignment="Left" Margin="10,205,0,0" VerticalAlignment="Top" Foreground="#FF646464"/>

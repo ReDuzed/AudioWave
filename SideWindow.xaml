@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:AudioWave"
         mc:Ignorable="d"
-        Title="Playlist" Height="450" Width="230" ResizeMode="CanMinimize" SizeToContent="WidthAndHeight" WindowStyle="ToolWindow" Closing="On_Closing" Background="#FF474747">
+        Title="Playlist" Height="450" Width="230" ResizeMode="CanMinimize" SizeToContent="WidthAndHeight" WindowStyle="ToolWindow" WindowStartupLocation="Manual" Closing="On_Closing" Background="#FF474747" Activated="Window_Activated">
     <Grid>
         <Rectangle HorizontalAlignment="Left" Height="422" VerticalAlignment="Top" Width="224"/>
         <Label x:Name="label_stop" Content="n" HorizontalAlignment="Left" Margin="150,376,0,0" VerticalAlignment="Top" FontFamily="Wingdings" FontSize="18" Foreground="#FF969696" RenderTransformOrigin="2.402,0.522" MouseEnter="On_MouseEnter" MouseLeave="On_MouseLeave" MouseDown="On_Stop"/>
