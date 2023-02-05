@@ -53,5 +53,6 @@
         <CheckBox x:Name="check_loopback" Content="Loopback" HorizontalAlignment="Left" Margin="108,371,0,0" VerticalAlignment="Top" Unchecked="On_Checked" Checked="On_Checked" Foreground="White"/>
         <CheckBox x:Name="check_waveform" Content="Circular Waveform" HorizontalAlignment="Left" Margin="10,234,0,0" VerticalAlignment="Top" Foreground="White" Unchecked="check_waveform_Checked" Checked="check_waveform_Checked"/>
         <CheckBox x:Name="check_style" Content="Stylized" HorizontalAlignment="Left" Margin="10,254,0,0" VerticalAlignment="Top" Foreground="White" Checked="check_style_Checked" Unchecked="check_style_Unchecked"/>
+        <CheckBox x:Name="check_style_meter" Content="Meter Style" HorizontalAlignment="Left" Margin="10,274,0,0" VerticalAlignment="Top" Foreground="White" Checked="check_style_meter_Checked" Unchecked="check_style_meter_Unchecked"/>
     </Grid>
 </Window>

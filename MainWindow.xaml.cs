@@ -14,6 +14,7 @@ using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using Color = System.Drawing.Color;
 
 namespace AudioWave
 {
@@ -28,7 +29,7 @@ namespace AudioWave
         internal SideWindow side;
         internal AuxWindow aux;
         internal static int Seed = 1;
-        public static bool RenderColor = false;
+        public static bool RenderColor = true;
         private Process update;
         private bool init = false;
         public MainWindow()
@@ -40,7 +41,7 @@ namespace AudioWave
                 Properties.Settings.Default["previous"] = DateTime.Now;
                 if (System.Windows.MessageBox.Show("Program version check for new updates.", "Prompt", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes) 
                 { 
-                    ProcessStartInfo info = new ProcessStartInfo(".\\UpdateClient.exe", $"--version 1.0b --targetexe AudioWave --updateurl https://github.com/ReDuzed/AudioWave/releases/download/ --changelogurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/changelog --versionurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/version --zipname audio.wave-v --processid {Process.GetCurrentProcess().Id}");
+                    ProcessStartInfo info = new ProcessStartInfo(".\\UpdateClient.exe", $"--version 1.0.2 --targetexe AudioWave --updateurl https://github.com/ReDuzed/AudioWave/releases/download/ --changelogurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/changelog --versionurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/version --zipname audio.wave-v --processid {Process.GetCurrentProcess().Id}");
                     update = Process.Start(info);
                 }
             }
@@ -135,12 +136,28 @@ namespace AudioWave
         internal static int width = 1;
         internal static Wave Instance;
         internal MixingWaveProvider32 mixer = new MixingWaveProvider32();
+        internal Square[] meter;
+        internal Square[] square;
+        internal const int MeterSize = 10;
+        internal const int SquareSize = 20;
         public Wave()
         {
             Window = MainWindow.Instance;
             Instance = this;
             Display();
-
+            //  Generate square meter style objects
+            meter = new Square[(int)Window.Width / MeterSize];
+            int num = MeterSize;
+            for (int i = 0; i < meter.Length; i++)
+            { 
+                meter[i] = Square.NewSquare(num += MeterSize, (int)Window.Height / 2, MeterSize, (int)Window.Height, 1f, 1d, 1f, Color.White);
+            }
+            square = new Square[(int)Window.Width / SquareSize];
+            int num2 = SquareSize;
+            for (int i = 0; i < square.Length; i++)
+            {
+                square[i] = Square.NewSquare(num2 += SquareSize, (int)Window.Height / 2, SquareSize, (int)Window.Height, 1f, i * (Math.PI * 2d / square.Length), 1f, Color.White);
+            }
             LoopCapture = new WasapiLoopbackCapture(WasapiLoopbackCapture.GetDefaultLoopbackCaptureDevice());
             LoopCapture.DataAvailable += LoopCapture_DataAvailable;
         }
@@ -418,6 +435,29 @@ namespace AudioWave
                             points[i].Y -= verticalOffY;
                         }
                         points[points.Length - 1] = points[points.Length - 2];
+                        if (AuxWindow.SquareStyle && !AuxWindow.CircularStyle)
+                        {
+                            for (int n = 0; n < meter.Length; n++)
+                            {
+                                int half = (int)Window.Height / 2;
+                                int x = n * MeterSize;
+                                int w = (int)(half - points[x].Y) - verticalOffY;
+                                int _y = (int)Math.Min(points[x].Y, half);
+                                if (_y == half)
+                                {
+                                    w = (int)points[x].Y - half;
+                                }
+                                w = Math.Max(0, w);
+                                meter[n].x = x;
+                                Square.Update(meter[n]);
+                                if (_y == half)
+                                {
+                                    meter[n].color = Color.DeepSkyBlue;
+                                }
+                                Square.SetAmplitude(meter[n], (w / (float)half) + 0.33f);
+                                Square.Draw(meter[n], _y, MeterSize, w + verticalOffY + 1, graphic);
+                            }
+                        }
                     }
                     else if (reader == null)
                     {
@@ -433,8 +473,10 @@ namespace AudioWave
                         //    points[i] = new PointF(i, height / 2 * data[i] + height / 2);
                         //}
                     }
-                    if (AuxWindow.CircularStyle)
+                    if (AuxWindow.CircularStyle && !AuxWindow.SquareStyle)
                         points = CircleEffect(points);
+                    else if (AuxWindow.CircularStyle && AuxWindow.SquareStyle)
+                        MeterCircleEffect(points, graphic);
                     if (points.Length > 1)
                     {
                         if ((MainWindow.Seed += 10) >= int.MaxValue - 10)
@@ -442,9 +484,13 @@ namespace AudioWave
                         var pen = new System.Drawing.Pen(System.Drawing.Brushes.White);
                         //var pen = Style.CosineColor(System.Drawing.Color.CornflowerBlue, DateTime.Now.Second * 3f);
                         pen.Width = Math.Min(Math.Max(Wave.width, 1), 12);
-                        if (AuxWindow.CircularStyle)
-                            graphic.DrawLines(pen, points);
-                        else graphic.DrawCurve(pen, points);
+                        if (AuxWindow.SquareStyle) { }
+                        else
+                        { 
+                            if (AuxWindow.CircularStyle)
+                                graphic.DrawLines(pen, points);
+                            else graphic.DrawCurve(pen, points);
+                        }
                         oldPoints = points;
                     }
                 }
@@ -519,6 +565,42 @@ namespace AudioWave
             Array.Copy(points, output, points.Length);
             output[points.Length] = points[0];
             return output;
+        }
+        private void MeterCircleEffect(PointF[] points, Graphics graphic)
+        {
+            PointF[] output = new PointF[points.Length + 1];
+            float fade = 1 / 24f;
+            int num2 = -1;
+            for (int i = 0; i < points.Length; i++)
+            {
+                bool flagIn = false;
+                bool flagOut = false;
+                if (flagIn = i < 24)
+                    fade += 1 / 24;
+                if (flagOut = i >= points.Length - 24)
+                    fade -= 1 / 24f;
+                float width = (float)this.Window.graph.Width;
+                float height = (float)this.Window.graph.Height;
+                float num = Math.Min(Math.Max(fade, 0.1f), 1f);
+                float centerX = (float)width / 2f;
+                float centerY = (float)height / 2f;
+                float radius = centerY;                          //+ 1
+                float x = centerX + (float)(radius / 3f * (data[i] + 1) * (flagIn || flagOut ? num : 1f) * Math.Cos(i / width * Math.PI * 2f));
+                float y = centerY + (float)(radius / 3f * (data[i] + 1) * (flagIn || flagOut ? num : 1f) * Math.Sin(i / width * Math.PI * 2f));
+                points[i] = new PointF(x, y);
+
+                if (i % SquareSize == 0)
+                {
+                    num2++;
+                    if (num2 < square.Length)
+                    { 
+                        float h = radius / 3f * (data[i] + 1);
+                        Square.Update(square[num2]);
+                        Square.SetAmplitude(square[num2], h);
+                        Square.Draw(square[num2], (int)x, (int)y, (int)h, i / width * (float)Math.PI * 2f, graphic);
+                    }
+                }
+            }
         }
     }
 }

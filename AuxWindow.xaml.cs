@@ -26,6 +26,8 @@ namespace AudioWave
     public partial class AuxWindow : Window
     {
         public static AuxWindow Instance;
+        public static bool CircularStyle = false;
+        public static bool SquareStyle = false;
         public AuxWindow()
         {
             InitializeComponent();
@@ -230,7 +232,7 @@ namespace AudioWave
             Label label = (Label)e.Source;
             label.Foreground = new SolidColorBrush(Color.FromRgb(150, 150, 150));
         }
-        public static bool CircularStyle = false;
+        
         private void check_waveform_Checked(object sender, RoutedEventArgs e)
         {
             CircularStyle = ((CheckBox)sender).IsChecked.Value;
@@ -250,6 +252,16 @@ namespace AudioWave
         {
             this.Top = MainWindow.Instance.Top;
             this.Left = MainWindow.Instance.Left + MainWindow.Instance.Width;
+        }
+
+        private void check_style_meter_Checked(object sender, RoutedEventArgs e)
+        {
+            SquareStyle = true;
+        }
+
+        private void check_style_meter_Unchecked(object sender, RoutedEventArgs e)
+        {
+            SquareStyle = false;
         }
     }
 }

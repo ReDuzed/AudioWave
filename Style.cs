@@ -1,12 +1,141 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace AudioWave
 {
+    public class Square
+    {
+        public double rotation;
+        public float scale;
+        public float amplitude;
+        public float alpha;
+        public int x;
+        public int y;
+        public int width;
+        public int height;
+        public Color color;
+        public Color newColor;
+        public TimeSpan time;
+        public Stopwatch stopwatch;
+        public Bitmap texture;
+        public static int WindowHeight;
+        public static Square NewSquare(int x, int y, int width, int height, float scale, double rotation, float alpha, Color color, bool randomRotation = false)
+        {
+            var s = new Square()
+            {
+                alpha = alpha,
+                amplitude = 1f,
+                color = color,
+                height = height,
+                rotation = randomRotation ? new Random(DateTime.Now.Millisecond).NextDouble() : rotation,
+                scale = scale,
+                width = width,
+                x = x,
+                y = y
+            };
+            s.texture = new Bitmap(width, height);
+            using (Graphics g = Graphics.FromImage(s.texture))
+            {
+                g.FillRectangle(new SolidBrush(Color.White), new Rectangle(0, 0, width, height));
+            }
+            s.time = TimeSpan.Zero;
+            s.stopwatch = new Stopwatch();
+            s.stopwatch.Start();
+            return s;
+        }
+        public static void SetAmplitude(Square square, float amplitude)
+        {
+            square.amplitude = Math.Min(amplitude, 1f);
+        }
+        public static void Update(Square square, bool updateColor = true, bool updateRotation = false)
+        {
+            TimeSpan add = TimeSpan.FromMilliseconds(100);
+            if (square.time <= square.stopwatch.Elapsed - add)
+            {
+                while (square.time <= square.stopwatch.Elapsed - add)
+                { 
+                    square.time += add;
+                }
+                if (updateRotation)
+                { 
+                    square.rotation += Helper.Radian;
+                }
+            }
+            if (updateColor)
+            {
+                square.newColor = square.Transtition(square.color, square.amplitude);
+            }
+        }
+        public static void Draw(Square s, int x, int y, int drawHeight, float angle, Graphics graphics)
+        {
+            int size = (int)MainWindow.Instance.Height;
+            using (Bitmap bitmap = new Bitmap(size, size))
+            { 
+                using (Graphics g = Graphics.FromImage(bitmap))
+                {
+                    g.Clear(Color.Blue);
+                    g.DrawLine(Pens.White, size / 2, 0, size / 2, size);
+                    //g.RotateTransform((float)Helper.ToDegrees(angle), System.Drawing.Drawing2D.MatrixOrder.Prepend);
+                    //g.ScaleTransform(s.scale, s.scale);
+                    var matrix = new System.Drawing.Drawing2D.Matrix();
+                    matrix.RotateAt(angle, new PointF(size / 2, size / 2));
+                    g.Transform = matrix;
+                }
+                graphics.DrawImage(bitmap, new Rectangle(x - size / 2, y, size, drawHeight), 0, 0, size, drawHeight,
+                    GraphicsUnit.Pixel,
+                    s.SetColor(
+                        s.newColor.A / 255f,
+                        s.newColor.R / 255f,
+                        s.newColor.G / 255f,
+                        s.newColor.B / 255f
+                ));
+            }
+        }
+        public static void Draw(Square s, int drawY, int drawWidth, int drawHeight, Graphics graphics)
+        {
+            using (Graphics g = Graphics.FromImage(s.texture))
+            {
+                g.RotateTransform((float)s.rotation);
+                g.ScaleTransform(s.scale, s.scale);
+            }
+            graphics.DrawImage(s.texture, new Rectangle(s.x - s.width / 2, drawY, drawWidth, drawHeight), 0, 0, s.width, drawHeight, 
+                GraphicsUnit.Pixel,
+                s.SetColor(
+                    s.newColor.A / 255f,
+                    s.newColor.R / 255f,
+                    s.newColor.G / 255f,
+                    s.newColor.B / 255f
+            ));
+        }
+        private ImageAttributes SetColor(float a, float r, float g, float b)
+        {
+            ImageAttributes attr = new ImageAttributes();
+            attr.SetColorMatrix(
+                new ColorMatrix(new float[][]
+                {
+                    new float[] { r , 0f, 0f, 0f, 0f },
+                    new float[] { 0f, g , 0f, 0f, 0f },
+                    new float[] { 0f, 0f, b , 0f, 0f },
+                    new float[] { 0f, 0f, 0f, a , 0f },
+                    new float[] { 0f, 0f, 0f, 0f, 0f }
+                }));
+            return attr;
+        }
+        private Color Transtition(Color color, float amplitude)
+        {
+            double shift = amplitude;
+            return Helper.FromDouble(alpha,
+                Math.Min(1f, shift * (color.R / 255d)),
+                Math.Min(1f, shift * (color.G / 255d)),
+                Math.Min(1f, shift * (color.B / 255d)));
+        }
+    }
     public class _Style
     {
         const double Radian = 0.017d;
@@ -129,7 +258,7 @@ namespace AudioWave
                 angle = 0;
         }*/
 
-        private static Color FromFloat(float a, float r, float g, float b)
+        public static Color FromFloat(float a, float r, float g, float b)
         {
             int A = (int)Math.Min(255f * a, 255),
                 R = (int)Math.Min(255f * r, 255),
@@ -137,7 +266,7 @@ namespace AudioWave
                 B = (int)Math.Min(255f * b, 255);
             return Color.FromArgb(A, R, G, B);
         }
-        private static Color FromDouble(double a, double r, double g, double b)
+        public static Color FromDouble(double a, double r, double g, double b)
         {
             int A = (int)Math.Max(Math.Min(255d * a, 255), 0),
                 R = (int)Math.Max(Math.Min(255d * r, 255), 0),
@@ -146,20 +275,36 @@ namespace AudioWave
             return Color.FromArgb(A, R, G, B);
         }
     }
-    class _helper
+    static class Helper
     {
-        const float Radian = 0.017f;
-        private int circumference(float distance)
+        public const double Radian = 0.017f;
+        public static int circumference(float distance)
         {
             return (int)(Radian * (45f / distance));
         }
-        private float ToRadian(float degrees)
+        public static double ToRadian(float degrees)
         {
             return degrees * Radian;
         }
-        private float ToDegrees(float radians)
+        public static double ToDegrees(float radians)
         {
             return radians / Radian;
+        }
+        public static Color FromFloat(float a, float r, float g, float b)
+        {
+            int A = (int)Math.Min(255f * a, 255),
+                R = (int)Math.Min(255f * r, 255),
+                G = (int)Math.Min(255f * g, 255),
+                B = (int)Math.Min(255f * b, 255);
+            return Color.FromArgb(A, R, G, B);
+        }
+        public static Color FromDouble(double a, double r, double g, double b)
+        {
+            int A = (int)Math.Max(Math.Min(255d * a, 255), 0),
+                R = (int)Math.Max(Math.Min(255d * r, 255), 0),
+                G = (int)Math.Max(Math.Min(255d * g, 255), 0),
+                B = (int)Math.Max(Math.Min(255d * b, 255), 0);
+            return Color.FromArgb(A, R, G, B);
         }
     }
 }
