@@ -1,7 +1,5 @@
-alpha 0.1.0.6 -> 1.0a
-# Changed
--> Pause option stops and starts
--> Window positions are oriented at start
+1.0a -> 1.0b
 # Added
--> Minimize
--> Update prompt
+-> Audio tracks resampled based on the chosen output device (or default)
+# Changed
+-> Icon
