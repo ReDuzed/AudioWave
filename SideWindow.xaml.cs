@@ -33,6 +33,7 @@ namespace AudioWave
         private bool looping;
         internal bool toggled;
         private bool halt = false;
+        bool resample = true;
         public List<string> Playlist = new List<string>();
         public List<AudioData> readList = new List<AudioData>();
         public SideWindow()
@@ -127,6 +128,15 @@ namespace AudioWave
             }
             dialog.Dispose();
         }
+        WaveFormatConversionProvider Resample(IWaveProvider wave, int samplerate = 44100)
+        {
+            if (Wave.Instance.defaultOutput != null)
+            {
+                samplerate = Wave.Instance.defaultOutput.AudioClient.MixFormat.SampleRate;
+            }
+            WaveFormat format = new WaveFormat(samplerate, wave.WaveFormat.BitsPerSample, wave.WaveFormat.Channels);
+            return new WaveFormatConversionProvider(format, wave);
+        }
         private bool PreLoadOne(string file, ref AudioData data)
         {
             if (data.memory != null)
@@ -140,7 +150,16 @@ namespace AudioWave
             {
                 memory = new MemoryStream();
                 var wfr = new WaveFileReader(file);
-                WaveFileWriter.WriteWavFileToStream(memory, wfr);
+                if (resample)
+                {
+                    var wfc = Resample(wfr);
+                    WaveFileWriter.WriteWavFileToStream(memory, wfc);
+                    wfc.Dispose();
+                }
+                else
+                { 
+                    WaveFileWriter.WriteWavFileToStream(memory, wfr);
+                }
                 wfr.Dispose();
             }
             data.memory = memory;
@@ -161,7 +180,16 @@ namespace AudioWave
                 {
                     memory = new MemoryStream();
                     var wfr = new WaveFileReader(next[i].FullPath);
-                    WaveFileWriter.WriteWavFileToStream(memory, wfr);
+                    if (resample) 
+                    {
+                        var wfc = Resample(wfr);
+                        WaveFileWriter.WriteWavFileToStream(memory, wfc);
+                        wfc.Dispose();
+                    }
+                    else
+                    {
+                        WaveFileWriter.WriteWavFileToStream(memory, wfr);
+                    }
                     wfr.Dispose();
                 }
                 next[i].memory = memory;
@@ -341,14 +369,26 @@ namespace AudioWave
             }
             return success ? new WaveFileReader(outputFile) : null;
         }
-        private MemoryStream DecompressMp3IntoStream(string file)
+
+        private MemoryStream DecompressMp3IntoStream(string file, bool resample = true, int samplerate = 441000)
         {
+            if (Wave.Instance.defaultOutput != null)
+                samplerate = Wave.Instance.defaultOutput.AudioClient.MixFormat.SampleRate;
             Window.wave.Stop();
             bool success = false;
             MemoryStream mem = new MemoryStream();
             using (Mp3FileReader read = new Mp3FileReader(file, wf => new DmoMp3FrameDecompressor(wf)))
             {
-                WaveFileWriter.WriteWavFileToStream(mem, read);
+                if (resample)
+                {
+                    var wfc = Resample(read, samplerate);
+                    WaveFileWriter.WriteWavFileToStream(mem, wfc);
+                    wfc.Dispose();
+                }
+                else
+                { 
+                    WaveFileWriter.WriteWavFileToStream(mem, read);
+                }
                 var format = read.WaveFormat;
                 byte[] buffer = mem.GetBuffer(); // RIFF.WaveFormatBuffer(format.SampleRate, format.Channels, format.BitsPerSample, 1, mem.GetBuffer());
                 mem.Dispose();
@@ -410,7 +450,11 @@ namespace AudioWave
             {
                 if (name.Contains("."))
                 {
-                    name = name.Substring(0, name.LastIndexOf("."));
+                    int index = 0;
+                    if ((index = name.IndexOf(".")) == name.Length - 4)
+                    { 
+                        name = name.Substring(0, index);
+                    }
                 }
                 if (name.Contains(@"\"))
                 {
@@ -545,6 +589,40 @@ namespace AudioWave
         {
             this.Top = Window.Top;
             this.Left = Window.Left - this.Width;
+        }
+
+        private void playlist_Drop(object sender, DragEventArgs e)
+        {
+            string[] fullPath = (string[])e.Data.GetData(DataFormats.FileDrop);
+            string[] files = new string[fullPath.Length];
+            for (int n = 0; n < fullPath.Length; n++)
+            {
+                string text = fullPath[n];
+                if (text.Contains("\\"))
+                    text = text.Substring(text.LastIndexOf("\\") + 1);
+                else if (text.Contains("/"))
+                    text = text.Substring(text.LastIndexOf("/") + 1);
+//              text = text.Substring(0, text.LastIndexOf('.'));
+                files[n] = text;
+            }
+            if (files.Length > 0)
+            {
+                for (int i = 0; i < files.Length; i++)
+                {
+                    Playlist.Add(fullPath[i]);
+                    var item = new ListBoxItem();
+                    item.Content = files[i].Substring(0, files[i].Length - 4);
+                    item.MouseDoubleClick += Item_MouseDoubleClick;
+                    playlist.Items.Add(item);
+
+                    string ext = files[i].Substring(files[i].Length - 4);
+                    var data = AudioData.NewAudioData(i, SafeFileName(fullPath[i]), fullPath[i], ext, null);
+                    if (!readList.Contains(data))
+                    {
+                        readList.Add(data);
+                    }
+                }
+            }
         }
     }
     public struct AudioData

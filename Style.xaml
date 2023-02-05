@@ -1,0 +1,14 @@
+﻿<Window x:Class="AudioWave.Style"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:AudioWave"
+        mc:Ignorable="d"
+        Title="Style" Height="450" Width="300" SizeToContent="WidthAndHeight">
+    <Grid>
+        <Rectangle HorizontalAlignment="Center" Fill="SlateGray" Height="434" Stroke="Black" VerticalAlignment="Center" Width="300" StrokeThickness="4"/>
+        <Rectangle HorizontalAlignment="Left" Height="180" Margin="40,40,0,0" Fill="DimGray" Stroke="DimGray" VerticalAlignment="Top" Width="220"/>
+        <Image HorizontalAlignment="Left" Height="180" Margin="40,40,0,0" VerticalAlignment="Top" Width="220" OpacityMask="Black"/>
+    </Grid>
+</Window>

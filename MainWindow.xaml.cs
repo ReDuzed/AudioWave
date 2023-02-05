@@ -40,7 +40,7 @@ namespace AudioWave
                 Properties.Settings.Default["previous"] = DateTime.Now;
                 if (System.Windows.MessageBox.Show("Program version check for new updates.", "Prompt", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes) 
                 { 
-                    ProcessStartInfo info = new ProcessStartInfo(".\\UpdateClient.exe", $"--version 0.1.0.6 --targetexe AudioWave --updateurl https://github.com/ReDuzed/AudioWave/releases/download/ --changelogurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/changelog --versionurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/version --zipname audio.wave-v --processid {Process.GetCurrentProcess().Id}");
+                    ProcessStartInfo info = new ProcessStartInfo(".\\UpdateClient.exe", $"--version 1.0b --targetexe AudioWave --updateurl https://github.com/ReDuzed/AudioWave/releases/download/ --changelogurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/changelog --versionurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/version --zipname audio.wave-v --processid {Process.GetCurrentProcess().Id}");
                     update = Process.Start(info);
                 }
             }
@@ -511,7 +511,7 @@ namespace AudioWave
                 float num = Math.Min(Math.Max(fade, 0.1f), 1f);
                 float centerX = (float)width / 2f;
                 float centerY = (float)height / 2f;
-                float radius = centerY;
+                float radius = centerY;                          //+ 1
                 float x = centerX + (float)(radius / 3f * (data[i] + 1) * (flagIn || flagOut ? num : 1f) * Math.Cos(i / width * Math.PI * 2f));
                 float y = centerY + (float)(radius / 3f * (data[i] + 1) * (flagIn || flagOut ? num : 1f) * Math.Sin(i / width * Math.PI * 2f));
                 points[i] = new PointF(x, y);

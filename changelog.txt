@@ -1,4 +1,12 @@
-﻿alpha 0.1.0.6 -> 1.0
+﻿1.0a -> 1.0b
+# Added
+-> Audio tracks resampled based on the chosen output device (or default)
+# Changed
+-> Icon
+# Fixed
+-> current.txt name truncating
+
+alpha 0.1.0.6 -> 1.0
 # Changed
 -> Pause option stops and starts
 -> Window positions are oriented at start

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace AudioWave
 {
-    public class Style
+    public class _Style
     {
         const double Radian = 0.017d;
         static double amplitude = MainWindow.Instance.Height / 2d;

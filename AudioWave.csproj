@@ -56,7 +56,7 @@
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup>
-    <ApplicationIcon>icon_audiowave.ico</ApplicationIcon>
+    <ApplicationIcon>icon_aw.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.Win32.Registry, Version=4.1.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
@@ -109,6 +109,9 @@
       <DependentUpon>SideWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Style.cs" />
+    <Compile Include="Style.xaml.cs">
+      <DependentUpon>Style.xaml</DependentUpon>
+    </Compile>
     <Page Include="AuxWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -126,6 +129,10 @@
       <SubType>Code</SubType>
     </Compile>
     <Page Include="SideWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Style.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -158,13 +165,28 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="changelog.txt" />
+    <Resource Include="changelog.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="markdown.txt" />
+    <None Include="markdown.txt" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="icon_audiowave.ico" />
+    <None Include="icon_audiowave.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="LICENSE.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="NAudio.License.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="icon_aw.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
