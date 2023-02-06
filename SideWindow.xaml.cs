@@ -150,14 +150,24 @@ namespace AudioWave
             {
                 memory = new MemoryStream();
                 var wfr = new WaveFileReader(file);
+            RECOURSE:
                 if (resample)
                 {
-                    var wfc = Resample(wfr);
-                    WaveFileWriter.WriteWavFileToStream(memory, wfc);
-                    wfc.Dispose();
+                    try
+                    { 
+                        var wfc = Resample(wfr);
+                        WaveFileWriter.WriteWavFileToStream(memory, wfc);
+                        wfc.Dispose();
+                    }
+                    catch
+                    {
+                        resample = false;
+                        goto RECOURSE;
+                    }
                 }
                 else
                 { 
+                    resample = true;
                     WaveFileWriter.WriteWavFileToStream(memory, wfr);
                 }
                 wfr.Dispose();
@@ -180,15 +190,25 @@ namespace AudioWave
                 {
                     memory = new MemoryStream();
                     var wfr = new WaveFileReader(next[i].FullPath);
+                RECOURSE:
                     if (resample) 
                     {
-                        var wfc = Resample(wfr);
-                        WaveFileWriter.WriteWavFileToStream(memory, wfc);
-                        wfc.Dispose();
+                        try
+                        { 
+                            var wfc = Resample(wfr);
+                            WaveFileWriter.WriteWavFileToStream(memory, wfc);
+                            wfc.Dispose();
+                        }
+                        catch
+                        {
+                            resample = false;
+                            goto RECOURSE;
+                        }
                     }
                     else
                     {
                         WaveFileWriter.WriteWavFileToStream(memory, wfr);
+                        resample = true;
                     }
                     wfr.Dispose();
                 }

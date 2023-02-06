@@ -41,7 +41,7 @@ namespace AudioWave
                 Properties.Settings.Default["previous"] = DateTime.Now;
                 if (System.Windows.MessageBox.Show("Program version check for new updates.", "Prompt", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes) 
                 { 
-                    ProcessStartInfo info = new ProcessStartInfo(".\\UpdateClient.exe", $"--version 1.0.2 --targetexe AudioWave --updateurl https://github.com/ReDuzed/AudioWave/releases/download/ --changelogurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/changelog --versionurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/version --zipname audio.wave-v --processid {Process.GetCurrentProcess().Id}");
+                    ProcessStartInfo info = new ProcessStartInfo(".\\UpdateClient.exe", $"--version 1.0.3 --targetexe AudioWave --updateurl https://github.com/ReDuzed/AudioWave/releases/download/ --changelogurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/changelog --versionurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/version --zipname audio.wave-v --processid {Process.GetCurrentProcess().Id}");
                     update = Process.Start(info);
                 }
             }
@@ -140,6 +140,7 @@ namespace AudioWave
         internal Square[] square;
         internal const int MeterSize = 10;
         internal const int SquareSize = 20;
+        internal Bitmap texture = (Bitmap)Bitmap.FromFile(".\\Textures\\temp90.png");
         public Wave()
         {
             Window = MainWindow.Instance;
@@ -157,6 +158,7 @@ namespace AudioWave
             for (int i = 0; i < square.Length; i++)
             {
                 square[i] = Square.NewSquare(num2 += SquareSize, (int)Window.Height / 2, SquareSize, (int)Window.Height, 1f, i * (Math.PI * 2d / square.Length), 1f, Color.White);
+                square[i].texture = texture;
             }
             LoopCapture = new WasapiLoopbackCapture(WasapiLoopbackCapture.GetDefaultLoopbackCaptureDevice());
             LoopCapture.DataAvailable += LoopCapture_DataAvailable;
@@ -351,20 +353,22 @@ namespace AudioWave
             }
             update = false;
         }
+        bool flag = false;
         EventHandler method;
+        AutoResetEvent wait = new AutoResetEvent(false);
         public static int Fps = 1000 / 120;
         public static bool style = false;
         private void Display()
         {
             method = delegate (object sender, EventArgs e)
             {
-                //Thread.Sleep(Fps);
+                if (flag) return;
+                flag = true;
                 if (reader != null && audioOut.PlaybackState == PlaybackState.Playing || capture != null && capture.CaptureState == CaptureState.Capturing || LoopCapture != null && LoopCapture.CaptureState == CaptureState.Capturing)
                     GenerateImage();
-                //MainWindow.Instance.graph.Dispatcher.BeginInvoke(method, System.Windows.Threading.DispatcherPriority.Render);
+                flag = false;
             };
             new DispatcherTimer(TimeSpan.FromMilliseconds(Fps), DispatcherPriority.Send, method, MainWindow.Instance.Dispatcher);
-            //MainWindow.Instance.graph.Dispatcher.BeginInvoke(method, System.Windows.Threading.DispatcherPriority.Render);
         }
         private void GenerateImage()
         {
@@ -449,12 +453,16 @@ namespace AudioWave
                                 }
                                 w = Math.Max(0, w);
                                 meter[n].x = x;
-                                Square.Update(meter[n]);
                                 if (_y == half)
                                 {
                                     meter[n].color = Color.DeepSkyBlue;
                                 }
+                                else
+                                {
+                                    meter[n].color = Color.Orange;
+                                }
                                 Square.SetAmplitude(meter[n], (w / (float)half) + 0.33f);
+                                Square.Update(meter[n]);
                                 Square.Draw(meter[n], _y, MeterSize, w + verticalOffY + 1, graphic);
                             }
                         }
@@ -475,8 +483,8 @@ namespace AudioWave
                     }
                     if (AuxWindow.CircularStyle && !AuxWindow.SquareStyle)
                         points = CircleEffect(points);
-                    else if (AuxWindow.CircularStyle && AuxWindow.SquareStyle)
-                        MeterCircleEffect(points, graphic);
+                    //else if (AuxWindow.CircularStyle && AuxWindow.SquareStyle)
+                    //    MeterCircleEffect(points, graphic);
                     if (points.Length > 1)
                     {
                         if ((MainWindow.Seed += 10) >= int.MaxValue - 10)
@@ -568,8 +576,7 @@ namespace AudioWave
         }
         private void MeterCircleEffect(PointF[] points, Graphics graphic)
         {
-            PointF[] output = new PointF[points.Length + 1];
-            float fade = 1 / 24f;
+            float fade = 1f;//1 / 24f;
             int num2 = -1;
             for (int i = 0; i < points.Length; i++)
             {
@@ -595,8 +602,8 @@ namespace AudioWave
                     if (num2 < square.Length)
                     { 
                         float h = radius / 3f * (data[i] + 1);
+                        Square.SetAmplitude(square[num2], h / (height / 2));
                         Square.Update(square[num2]);
-                        Square.SetAmplitude(square[num2], h);
                         Square.Draw(square[num2], (int)x, (int)y, (int)h, i / width * (float)Math.PI * 2f, graphic);
                     }
                 }

@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -74,28 +76,7 @@ namespace AudioWave
         }
         public static void Draw(Square s, int x, int y, int drawHeight, float angle, Graphics graphics)
         {
-            int size = (int)MainWindow.Instance.Height;
-            using (Bitmap bitmap = new Bitmap(size, size))
-            { 
-                using (Graphics g = Graphics.FromImage(bitmap))
-                {
-                    g.Clear(Color.Blue);
-                    g.DrawLine(Pens.White, size / 2, 0, size / 2, size);
-                    //g.RotateTransform((float)Helper.ToDegrees(angle), System.Drawing.Drawing2D.MatrixOrder.Prepend);
-                    //g.ScaleTransform(s.scale, s.scale);
-                    var matrix = new System.Drawing.Drawing2D.Matrix();
-                    matrix.RotateAt(angle, new PointF(size / 2, size / 2));
-                    g.Transform = matrix;
-                }
-                graphics.DrawImage(bitmap, new Rectangle(x - size / 2, y, size, drawHeight), 0, 0, size, drawHeight,
-                    GraphicsUnit.Pixel,
-                    s.SetColor(
-                        s.newColor.A / 255f,
-                        s.newColor.R / 255f,
-                        s.newColor.G / 255f,
-                        s.newColor.B / 255f
-                ));
-            }
+            Helper.DrawRotate(s.texture, new Rectangle(x, y, s.width, s.width), new Rectangle(0, 0, s.width, s.width), angle, PointF.Empty, s.newColor, Color.Black, RotateType.GraphicsTransform, graphics);
         }
         public static void Draw(Square s, int drawY, int drawWidth, int drawHeight, Graphics graphics)
         {
@@ -286,9 +267,9 @@ namespace AudioWave
         {
             return degrees * Radian;
         }
-        public static double ToDegrees(float radians)
+        public static float ToDegrees(float radians)
         {
-            return radians / Radian;
+            return radians / (float)Radian;
         }
         public static Color FromFloat(float a, float r, float g, float b)
         {
@@ -306,5 +287,54 @@ namespace AudioWave
                 B = (int)Math.Max(Math.Min(255d * b, 255), 0);
             return Color.FromArgb(A, R, G, B);
         }
+        public static void DrawRotate(Image image, Rectangle rect, Rectangle sourceRect, float angle, PointF origin, Color newColor, Color transparency, RotateType type, Graphics graphics)
+        {
+            ImageAttributes attributes = new ImageAttributes();
+            ColorMatrix transform = new ColorMatrix(new float[][]
+            {
+                new float[] { newColor.R / 255f, 0, 0, 0, 0 },
+                new float[] { 0, newColor.G / 255f, 0, 0, 0 },
+                new float[] { 0, 0, newColor.B / 255f, 0, 0 },
+                new float[] { 0, 0, 0, newColor.A / 255f, 0 },
+                new float[] { 0, 0, 0, 0, 0 }
+            });
+            attributes.SetColorMatrix(transform);
+
+            MemoryStream mem = new MemoryStream();
+            using (Bitmap clone = (Bitmap)image.Clone())
+            {
+                clone.MakeTransparent(transparency);
+                using (Bitmap bmp = new Bitmap(image.Width, image.Height))
+                {
+                    using (Graphics gfx = Graphics.FromImage(bmp))
+                    {
+                        switch (type)
+                        {
+                            case RotateType.MatrixTransform:
+                                var matrix = new Matrix();
+                                matrix.RotateAt(angle, origin);
+                                gfx.Transform = matrix;
+                                break;
+                            case RotateType.GraphicsTransform:
+                                gfx.TranslateTransform(origin.X, origin.Y);
+                                gfx.RotateTransform(angle);
+                                gfx.TranslateTransform(-origin.X, -origin.Y);
+                                break;
+                            default:
+                                break;
+                        }
+                        gfx.DrawImage(clone, Point.Empty);
+                        bmp.Save(mem, ImageFormat.Png);
+                    }
+                }
+                graphics.DrawImage(Bitmap.FromStream(mem), rect, sourceRect.X, sourceRect.Y, sourceRect.Width, sourceRect.Height, GraphicsUnit.Pixel, attributes);
+            }
+            mem.Dispose();
+        }
+    }
+    public enum RotateType
+    {
+        MatrixTransform,
+        GraphicsTransform
     }
 }

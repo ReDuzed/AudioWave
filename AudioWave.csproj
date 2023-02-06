@@ -188,5 +188,13 @@
   <ItemGroup>
     <Resource Include="icon_aw.ico" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Textures\temp.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Textures\temp90.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
