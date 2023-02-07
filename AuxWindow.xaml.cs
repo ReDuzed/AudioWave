@@ -77,7 +77,7 @@ namespace AudioWave
                 if (activate)
                 {
                     SideWindow.Instance.On_Stop(null, null);
-                    MainWindow.Instance.wave.InitCapture(MainWindow.Instance.wave.defaultInput);
+                    MainWindow.Instance.wave.InitCapture(Wave.defaultInput);
                 }
                 else
                 {
@@ -121,7 +121,7 @@ namespace AudioWave
                     continue;
                 if (list.Items[list.SelectedIndex].ToString().Contains(a.FriendlyName))
                 {
-                    MainWindow.Instance.wave.defaultInput = a;
+                    Wave.defaultInput = a;
                     return;
                 }
             }
@@ -138,7 +138,7 @@ namespace AudioWave
                     continue;
                 if (list.Items[list.SelectedIndex].ToString().Contains(a.FriendlyName))
                 {
-                    MainWindow.Instance.wave.defaultOutput = a;
+                    Wave.defaultOutput = a;
                     return;
                 }
             }

@@ -34,22 +34,22 @@ namespace AudioWave
         internal bool toggled;
         private bool halt = false;
         bool resample = true;
-        public static List<string> Playlist = new List<string>();
-        public static List<AudioData> readList = new List<AudioData>();
+        public List<string> Playlist = new List<string>();
+        public List<AudioData> readList = new List<AudioData>();
+        public static AudioData[] dataArray = new AudioData[2];
         public SideWindow()
         {
             InitializeComponent();
             Window = MainWindow.Instance;
             Owner = Window;
             Instance = this;
-            Wave.Instance.audioOut = new WasapiOut(MainWindow.Instance.wave.defaultOutput, AudioClientShareMode.Shared, false, 0);
         }
         public void On_PlaybackStopped(object sender, StoppedEventArgs e)
         {
             //if (halt) return;
             if (looping)
             {
-                //Window.wave.reader.Seek(0, System.IO.SeekOrigin.Begin);
+                Window.wave.reader.Seek(0, System.IO.SeekOrigin.Begin);
                 Wave.Instance.audioOut.Play();
                 return;
             }
@@ -61,8 +61,7 @@ namespace AudioWave
                     //WriteCurrent(Playlist[index]);
                     //halt = true;
                     playlist.SelectedIndex = current;
-                    FillNextBuffer();
-                    //On_Play(sender, null);
+                    On_Play(sender, null);
                 }
                 else
                 {
@@ -70,45 +69,6 @@ namespace AudioWave
                 }
             }
         }
-
-        void FillNextBuffer()
-        {
-            AuxWindow.Instance.check_loopback.IsChecked = false;
-            playing = true;
-            toggled = true;
-            current = playlist.SelectedIndex == -1 ? 0 : playlist.SelectedIndex;
-            if (Playlist.Count <= 0) return;
-
-            Task.Factory.StartNew(() =>
-            {
-                AudioData data = default;
-                for (int i = 0; i < Playlist.Count; i++)
-                {
-                    if (readList[i].Name == SafeFileName(Playlist[current]))
-                    {
-                        data = readList[i];
-                        if (data.memory == null)
-                        {
-                            PreLoadOne(data.FullPath, ref data);
-                        }
-                        if (readList[i + 1].memory == null)
-                        {
-                            PreLoadHandler((ListBoxItem)playlist.Items[current]);
-                        }
-                    
-                        break;
-                    }
-                }
-                //  Initialize MemoryStream buffers
-                //Wave.getCurrent = readList[current].memory;
-                if (readList.Count > current + 1)
-                {
-                    Wave.getNext = GetNextTracks(((ListBoxItem)playlist.Items[current + 1]).Content.ToString())[0].memory;
-                }
-            });
-            WriteCurrent(readList[current].Name);
-        }
-
         private void On_MouseEnter(object sender, MouseEventArgs e)
         {
             Label label = (Label)e.Source;
@@ -170,9 +130,9 @@ namespace AudioWave
         }
         WaveFormatConversionProvider Resample(IWaveProvider wave, int samplerate = 44100)
         {
-            if (Wave.Instance.defaultOutput != null)
+            if (Wave.defaultOutput != null)
             {
-                samplerate = Wave.Instance.defaultOutput.AudioClient.MixFormat.SampleRate;
+                samplerate = Wave.defaultOutput.AudioClient.MixFormat.SampleRate;
             }
             WaveFormat format = new WaveFormat(samplerate, wave.WaveFormat.BitsPerSample, wave.WaveFormat.Channels);
             return new WaveFormatConversionProvider(format, wave);
@@ -194,7 +154,7 @@ namespace AudioWave
                 if (resample)
                 {
                     try
-                    { 
+                    {
                         var wfc = Resample(wfr);
                         WaveFileWriter.WriteWavFileToStream(memory, wfc);
                         wfc.Dispose();
@@ -206,7 +166,7 @@ namespace AudioWave
                     }
                 }
                 else
-                { 
+                {
                     resample = true;
                     WaveFileWriter.WriteWavFileToStream(memory, wfr);
                 }
@@ -231,10 +191,10 @@ namespace AudioWave
                     memory = new MemoryStream();
                     var wfr = new WaveFileReader(next[i].FullPath);
                 RECOURSE:
-                    if (resample) 
+                    if (resample)
                     {
                         try
-                        { 
+                        {
                             var wfc = Resample(wfr);
                             WaveFileWriter.WriteWavFileToStream(memory, wfc);
                             wfc.Dispose();
@@ -287,11 +247,15 @@ namespace AudioWave
             {
                 var next = readList.FirstOrDefault(t => t.Name == SafeFileName(Playlist[index + 1]));
                 _list.Add(next);
+                dataArray[0] = next;
+                BufferedData.Fill(next);
             }
             if (index + 2 < Playlist.Count)
             {
                 var next2 = readList.FirstOrDefault(t => t.Name == SafeFileName(Playlist[index + 2]));
                 _list.Add(next2);
+                dataArray[1] = next2;
+                BufferedData.Fill(next2);
             }
             return _list.ToArray();
         }
@@ -312,6 +276,7 @@ namespace AudioWave
                 ((ListBoxItem)playlist.Items[index]).MouseDoubleClick -= Item_MouseDoubleClick;
                 Playlist.RemoveAt(index);
                 playlist.Items.RemoveAt(index);
+                BufferedData.Remove(readList[index]);
             }
         }
 
@@ -343,18 +308,13 @@ namespace AudioWave
                     break;
                 }
             }
-            //  Initialize MemoryStream buffers
-            Wave.getCurrent = readList[current].memory;
-            if (readList.Count > current + 1)
-            {
-                Wave.getNext = GetNextTracks(((ListBoxItem)playlist.Items[current + 1]).Content.ToString())[0].memory;
-            }
             if (data.memory != null)
             {
                 try
                 {
                     data.memory.Seek(0, SeekOrigin.Begin);
-                    Window.wave.Init(Wave.playbackBuffer, Window.wave.defaultOutput);
+                    //               data.memory
+                    Window.wave.Init(BufferedData.Fill(data), Wave.defaultOutput);
 
                     WriteCurrent(readList[current].Name);
                 }
@@ -364,8 +324,7 @@ namespace AudioWave
                     PreLoadOne(data.FullPath, ref data);
 
                     data.memory.Seek(0, SeekOrigin.Begin);
-                    //  Main playback method
-                    Window.wave.Init(Wave.playbackBuffer, Window.wave.defaultOutput);
+                    Window.wave.Init(BufferedData.Fill(data), Wave.defaultOutput);
 
                     WriteCurrent(readList[current].Name);
                 }
@@ -387,18 +346,18 @@ namespace AudioWave
             WriteCurrent(Playlist[current]);
             if (!isMp3)
             {
-                Window.wave.Init(Playlist[current], Window.wave.defaultOutput);
+                Window.wave.Init(Playlist[current], Wave.defaultOutput);
             }
             else
             {
-                Window.wave.Init("_audio.wav", Window.wave.defaultOutput);
+                Window.wave.Init("_audio.wav", Wave.defaultOutput);
             }
             halt = false;
             #endregion
         }
         private BufferedWaveProvider DecompressMp3(bool isMp3 = true)
         {
-            var _format = Window.wave.defaultOutput.AudioClient.MixFormat;
+            var _format = Wave.defaultOutput.AudioClient.MixFormat;
             WaveFormat format = _format;
             BufferedWaveProvider buff = null;
             if (isMp3)
@@ -437,10 +396,10 @@ namespace AudioWave
             return success ? new WaveFileReader(outputFile) : null;
         }
 
-        private MemoryStream DecompressMp3IntoStream(string file, bool resample = true, int samplerate = 44100)
+        private MemoryStream DecompressMp3IntoStream(string file, bool resample = true, int samplerate = 441000)
         {
-            if (Wave.Instance.defaultOutput != null)
-                samplerate = Wave.Instance.defaultOutput.AudioClient.MixFormat.SampleRate;
+            if (Wave.defaultOutput != null)
+                samplerate = Wave.defaultOutput.AudioClient.MixFormat.SampleRate;
             Window.wave.Stop();
             bool success = false;
             MemoryStream mem = new MemoryStream();
@@ -453,7 +412,7 @@ namespace AudioWave
                     wfc.Dispose();
                 }
                 else
-                { 
+                {
                     WaveFileWriter.WriteWavFileToStream(mem, read);
                 }
                 var format = read.WaveFormat;
@@ -519,7 +478,7 @@ namespace AudioWave
                 {
                     int index = 0;
                     if ((index = name.IndexOf(".")) == name.Length - 4)
-                    { 
+                    {
                         name = name.Substring(0, index);
                     }
                 }
@@ -536,8 +495,7 @@ namespace AudioWave
             if (Window.wave != null && Window.wave.reader != null)
             {
                 Wave.Instance.audioOut.Stop();
-                //  BufferedWaveProvider effect
-                //Window.wave.reader.Seek(0, System.IO.SeekOrigin.Begin);
+                Window.wave.reader.Seek(0, System.IO.SeekOrigin.Begin);
             }
         }
 
@@ -567,6 +525,7 @@ namespace AudioWave
             playlist.Items.Clear();
             Playlist.Clear();
             readList.Clear();
+            BufferedData.Clear();
         }
 
         private void On_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -670,7 +629,7 @@ namespace AudioWave
                     text = text.Substring(text.LastIndexOf("\\") + 1);
                 else if (text.Contains("/"))
                     text = text.Substring(text.LastIndexOf("/") + 1);
-//              text = text.Substring(0, text.LastIndexOf('.'));
+                //              text = text.Substring(0, text.LastIndexOf('.'));
                 files[n] = text;
             }
             if (files.Length > 0)
@@ -738,7 +697,6 @@ namespace AudioWave
         public string Name;
         public string FullPath;
         public int index;
-        public static int Current;
         public override string ToString()
         {
             return $"Name: {Name}, index: {index}, Ext: {Ext}";
@@ -758,6 +716,44 @@ namespace AudioWave
         public override int GetHashCode()
         {
             return base.GetHashCode();
+        }
+    }
+    public static class BufferedData
+    {
+        private static BufferedWaveProvider Playback
+        {
+            get { return Wave.playbackBuffer; }
+            set { Wave.playbackBuffer = value; }
+        }
+        private static IList<string> data = new List<string>();
+        public static void Init(WaveFormat format)
+        {
+            Playback = new BufferedWaveProvider(format);
+            Playback.ReadFully = true;
+        }
+        public static BufferedWaveProvider Fill(AudioData data)
+        {   
+            if (!BufferedData.data.Contains(data.Name + data.Ext))
+            {
+                LoadMemoryInfoBuffer(data);
+                BufferedData.data.Add(data.Name + data.Ext);
+            }
+            //Playback.ClearBuffer();
+            return Playback;
+        }
+        public static void Remove(AudioData data)
+        {
+            BufferedData.data.Remove(data.Name);
+        }
+        public static void Clear()
+        {
+            data.Clear();
+        }
+        private static void LoadMemoryInfoBuffer(AudioData data)
+        {
+            if (data.memory == null) return;
+            byte[] buffer = data.memory.GetBuffer();
+            Playback.AddSamples(buffer, 0, buffer.Length);
         }
     }
 }

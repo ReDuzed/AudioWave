@@ -50,9 +50,8 @@ namespace AudioWave
             InitializeComponent();
             Instance = this;
             wave = new Wave();
-            wave.defaultOutput = new MMDeviceEnumerator().GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
-            Wave.playbackFormat = wave.defaultOutput.AudioClient.MixFormat;
-            wave.FillBuffer().Start();
+            Wave.defaultOutput = new MMDeviceEnumerator().GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            BufferedData.Init(Wave.defaultOutput.AudioClient.MixFormat);
         }
 
         internal void On_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -132,15 +131,12 @@ namespace AudioWave
         private float[] data;
         private MainWindow Window;
         internal WasapiOut audioOut;
-        public MMDevice defaultOutput;
-        public MMDevice defaultInput;
+        public static MMDevice defaultOutput;
+        public static MMDevice defaultInput;
         public WasapiCapture capture;
         public BufferedWaveProvider buffer;
-        public static BufferedWaveProvider preBuffer;
         public static BufferedWaveProvider playbackBuffer;
-        public static MemoryStream getCurrent;
-        public static MemoryStream getNext;
-        public static WaveFormat playbackFormat;
+        public static WaveFormat playbackFormat => defaultOutput.AudioClient.MixFormat;
         public bool monitor, once;
         public WasapiOut monitorOut;
         internal static int width = 1;
@@ -173,97 +169,7 @@ namespace AudioWave
             LoopCapture = new WasapiLoopbackCapture(WasapiLoopbackCapture.GetDefaultLoopbackCaptureDevice());
             LoopCapture.DataAvailable += LoopCapture_DataAvailable;
         }
-        public Thread FillBuffer()
-        {
-            return  new Thread((t) => 
-            {
-                playbackBuffer = new BufferedWaveProvider(playbackFormat);
-                preBuffer = new BufferedWaveProvider(playbackFormat);
-                Stopwatch timer = new Stopwatch();
-                timer.Start();
-                TimeSpan span = TimeSpan.Zero;
-                int take = 10 * playbackFormat.AverageBytesPerSecond;
-                int num = 0;
-                preBuffer.ReadFully = true;
-                preBuffer.BufferLength = take * 30;
-                do
-                {
-                    if (getCurrent == null || audioOut == null) continue;
-                    if (audioOut.PlaybackState == PlaybackState.Playing)
-                    {
-                        if (!timer.IsRunning) timer.Start();
-                        if (span <= timer.Elapsed)
-                        { 
-                            long position = 0;
-                            try
-                            { 
-                                position = audioOut.GetPosition() / playbackFormat.AverageBytesPerSecond;
-                            }
-                            catch { continue; }
-                            if (position > span.TotalSeconds)
-                            {
-                                span = TimeSpan.FromSeconds(position + 10);
-                            }
-                            span += TimeSpan.FromSeconds(10);
-                            string _current = "440hz sine tone";
-                            string _next = "440hz sine tone";
-
-                            var Current = SideWindow.readList.First(r => r.Name == _current);
-                            int next = SideWindow.readList.IndexOf(Current) + 1;
-                            bool isThereNext = SideWindow.readList.Count >= next;
-                            int current = Current.index;
-                            
-                            //var mem = SideWindow.readList.First(r => r.index == current).memory;
-                            //var memNext = SideWindow.readList.FirstOrDefault(r => isThereNext && r.index == next).memory;
-                            
-                            var mem = getCurrent;
-                            var memNext = getNext;
-
-                            take = playbackFormat.AverageBytesPerSecond;
-                            byte[] buf = getCurrent.GetBuffer();
-                            long len = take;
-
-                            if (mem.Position + len > mem.Length)
-                            {
-                                len = mem.Length - mem.Position;
-                                preBuffer.AddSamples(buf, 0, (int)len);
-                                if (isThereNext)
-                                {
-                                    buf = getNext.GetBuffer();
-                                    len = take - len;
-                                    if (memNext.Length < len)
-                                    {
-                                        len = memNext.Length;
-                                    }
-                                    preBuffer.AddSamples(buf, 0, (int)len);
-                                }
-                            }
-                            else
-                            {
-                                preBuffer.AddSamples(buf, 0, (int)len);
-                            }
-                            if (preBuffer.BufferLength > take)
-                            {
-                                playbackBuffer = preBuffer;
-                            }
-                            if (preBuffer.BufferLength >= take * 5)
-                            {
-                                preBuffer.ClearBuffer();
-                            }
-                        }
-                    }
-                    else
-                    {
-                        audioOut.Play();
-                        timer.Reset();
-                    }
-                } while (!MainWindow.closing);
-            })
-            { 
-                IsBackground = true,
-              Name = "Fill.Buffer"
-            };
-        }
+        
         public void Stop(bool stopDeviceOut = false)
         {
             if (audioOut != null)
@@ -297,15 +203,15 @@ namespace AudioWave
         public void Init(BufferedWaveProvider buff, MMDevice output)
         {
             data = _Buffer(0);
-            if (audioOut != null)
+            if (audioOut == null || defaultOutput != output)
             {
-                audioOut.PlaybackStopped -= MainWindow.Instance.side.On_PlaybackStopped;
-                audioOut.Dispose();
+                //audioOut.PlaybackStopped -= MainWindow.Instance.side.On_PlaybackStopped;
+                //audioOut.Dispose();
                 audioOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
                 audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
                 audioOut.Init(buff);
-                audioOut.Play();
             }
+            audioOut.Play();
         }
         private void _Init(WaveFileReader read, MMDevice output)
         {
@@ -632,14 +538,16 @@ namespace AudioWave
         }
         private float[] _Buffer(int length)
         {
-            if (reader != null)
+            //          reader != null)
+            if (playbackBuffer != null)
             {
                 try
                 {
                     long position = reader == null ? 0 : reader.Position;
                     float[] buffer = new float[length];
-                    reader?.ToSampleProvider()?.Read(buffer, 0, buffer.Length);
-                    reader.Position = position;
+                    playbackBuffer?.ToSampleProvider()?.Read(buffer, 0, buffer.Length);
+                    //reader?.ToSampleProvider()?.Read(buffer, 0, buffer.Length);
+                    //reader.Position = position;
                     return buffer;
                 }
                 catch
