@@ -51,7 +51,6 @@ namespace AudioWave
             Instance = this;
             wave = new Wave();
             Wave.defaultOutput = new MMDeviceEnumerator().GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
-            BufferedData.Init(Wave.defaultOutput.AudioClient.MixFormat);
         }
 
         internal void On_Closing(object sender, System.ComponentModel.CancelEventArgs e)

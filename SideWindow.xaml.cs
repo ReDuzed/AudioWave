@@ -36,13 +36,13 @@ namespace AudioWave
         bool resample = true;
         public List<string> Playlist = new List<string>();
         public List<AudioData> readList = new List<AudioData>();
-        public static AudioData[] dataArray = new AudioData[2];
         public SideWindow()
         {
             InitializeComponent();
             Window = MainWindow.Instance;
             Owner = Window;
             Instance = this;
+            Wave.Instance.audioOut = new WasapiOut(Wave.defaultOutput, AudioClientShareMode.Shared, false, 0);
         }
         public void On_PlaybackStopped(object sender, StoppedEventArgs e)
         {
@@ -247,15 +247,11 @@ namespace AudioWave
             {
                 var next = readList.FirstOrDefault(t => t.Name == SafeFileName(Playlist[index + 1]));
                 _list.Add(next);
-                dataArray[0] = next;
-                BufferedData.Fill(next);
             }
             if (index + 2 < Playlist.Count)
             {
                 var next2 = readList.FirstOrDefault(t => t.Name == SafeFileName(Playlist[index + 2]));
                 _list.Add(next2);
-                dataArray[1] = next2;
-                BufferedData.Fill(next2);
             }
             return _list.ToArray();
         }
@@ -276,7 +272,6 @@ namespace AudioWave
                 ((ListBoxItem)playlist.Items[index]).MouseDoubleClick -= Item_MouseDoubleClick;
                 Playlist.RemoveAt(index);
                 playlist.Items.RemoveAt(index);
-                BufferedData.Remove(readList[index]);
             }
         }
 
@@ -313,8 +308,7 @@ namespace AudioWave
                 try
                 {
                     data.memory.Seek(0, SeekOrigin.Begin);
-                    //               data.memory
-                    Window.wave.Init(BufferedData.Fill(data), Wave.defaultOutput);
+                    Window.wave.Init(data.memory, Wave.defaultOutput);
 
                     WriteCurrent(readList[current].Name);
                 }
@@ -324,7 +318,7 @@ namespace AudioWave
                     PreLoadOne(data.FullPath, ref data);
 
                     data.memory.Seek(0, SeekOrigin.Begin);
-                    Window.wave.Init(BufferedData.Fill(data), Wave.defaultOutput);
+                    Window.wave.Init(data.memory, Wave.defaultOutput);
 
                     WriteCurrent(readList[current].Name);
                 }
@@ -525,7 +519,6 @@ namespace AudioWave
             playlist.Items.Clear();
             Playlist.Clear();
             readList.Clear();
-            BufferedData.Clear();
         }
 
         private void On_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -716,44 +709,6 @@ namespace AudioWave
         public override int GetHashCode()
         {
             return base.GetHashCode();
-        }
-    }
-    public static class BufferedData
-    {
-        private static BufferedWaveProvider Playback
-        {
-            get { return Wave.playbackBuffer; }
-            set { Wave.playbackBuffer = value; }
-        }
-        private static IList<string> data = new List<string>();
-        public static void Init(WaveFormat format)
-        {
-            Playback = new BufferedWaveProvider(format);
-            Playback.ReadFully = true;
-        }
-        public static BufferedWaveProvider Fill(AudioData data)
-        {   
-            if (!BufferedData.data.Contains(data.Name + data.Ext))
-            {
-                LoadMemoryInfoBuffer(data);
-                BufferedData.data.Add(data.Name + data.Ext);
-            }
-            //Playback.ClearBuffer();
-            return Playback;
-        }
-        public static void Remove(AudioData data)
-        {
-            BufferedData.data.Remove(data.Name);
-        }
-        public static void Clear()
-        {
-            data.Clear();
-        }
-        private static void LoadMemoryInfoBuffer(AudioData data)
-        {
-            if (data.memory == null) return;
-            byte[] buffer = data.memory.GetBuffer();
-            Playback.AddSamples(buffer, 0, buffer.Length);
         }
     }
 }
