@@ -9,6 +9,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Forms;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
@@ -32,6 +33,7 @@ namespace AudioWave
         public static bool RenderColor = true;
         private Process update;
         private bool init = false;
+        public static bool closing = false;
         public MainWindow()
         {
             DateTime previous = (DateTime)Properties.Settings.Default["previous"];
@@ -49,10 +51,13 @@ namespace AudioWave
             Instance = this;
             wave = new Wave();
             wave.defaultOutput = new MMDeviceEnumerator().GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            Wave.playbackFormat = wave.defaultOutput.AudioClient.MixFormat;
+            wave.FillBuffer().Start();
         }
 
         internal void On_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
+            closing = true;
             if (update != null)
             { 
                 update.CloseMainWindow();
@@ -131,6 +136,11 @@ namespace AudioWave
         public MMDevice defaultInput;
         public WasapiCapture capture;
         public BufferedWaveProvider buffer;
+        public static BufferedWaveProvider preBuffer;
+        public static BufferedWaveProvider playbackBuffer;
+        public static MemoryStream getCurrent;
+        public static MemoryStream getNext;
+        public static WaveFormat playbackFormat;
         public bool monitor, once;
         public WasapiOut monitorOut;
         internal static int width = 1;
@@ -162,6 +172,97 @@ namespace AudioWave
             }
             LoopCapture = new WasapiLoopbackCapture(WasapiLoopbackCapture.GetDefaultLoopbackCaptureDevice());
             LoopCapture.DataAvailable += LoopCapture_DataAvailable;
+        }
+        public Thread FillBuffer()
+        {
+            return  new Thread((t) => 
+            {
+                playbackBuffer = new BufferedWaveProvider(playbackFormat);
+                preBuffer = new BufferedWaveProvider(playbackFormat);
+                Stopwatch timer = new Stopwatch();
+                timer.Start();
+                TimeSpan span = TimeSpan.Zero;
+                int take = 10 * playbackFormat.AverageBytesPerSecond;
+                int num = 0;
+                preBuffer.ReadFully = true;
+                preBuffer.BufferLength = take * 30;
+                do
+                {
+                    if (getCurrent == null || audioOut == null) continue;
+                    if (audioOut.PlaybackState == PlaybackState.Playing)
+                    {
+                        if (!timer.IsRunning) timer.Start();
+                        if (span <= timer.Elapsed)
+                        { 
+                            long position = 0;
+                            try
+                            { 
+                                position = audioOut.GetPosition() / playbackFormat.AverageBytesPerSecond;
+                            }
+                            catch { continue; }
+                            if (position > span.TotalSeconds)
+                            {
+                                span = TimeSpan.FromSeconds(position + 10);
+                            }
+                            span += TimeSpan.FromSeconds(10);
+                            string _current = "440hz sine tone";
+                            string _next = "440hz sine tone";
+
+                            var Current = SideWindow.readList.First(r => r.Name == _current);
+                            int next = SideWindow.readList.IndexOf(Current) + 1;
+                            bool isThereNext = SideWindow.readList.Count >= next;
+                            int current = Current.index;
+                            
+                            //var mem = SideWindow.readList.First(r => r.index == current).memory;
+                            //var memNext = SideWindow.readList.FirstOrDefault(r => isThereNext && r.index == next).memory;
+                            
+                            var mem = getCurrent;
+                            var memNext = getNext;
+
+                            take = playbackFormat.AverageBytesPerSecond;
+                            byte[] buf = getCurrent.GetBuffer();
+                            long len = take;
+
+                            if (mem.Position + len > mem.Length)
+                            {
+                                len = mem.Length - mem.Position;
+                                preBuffer.AddSamples(buf, 0, (int)len);
+                                if (isThereNext)
+                                {
+                                    buf = getNext.GetBuffer();
+                                    len = take - len;
+                                    if (memNext.Length < len)
+                                    {
+                                        len = memNext.Length;
+                                    }
+                                    preBuffer.AddSamples(buf, 0, (int)len);
+                                }
+                            }
+                            else
+                            {
+                                preBuffer.AddSamples(buf, 0, (int)len);
+                            }
+                            if (preBuffer.BufferLength > take)
+                            {
+                                playbackBuffer = preBuffer;
+                            }
+                            if (preBuffer.BufferLength >= take * 5)
+                            {
+                                preBuffer.ClearBuffer();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        audioOut.Play();
+                        timer.Reset();
+                    }
+                } while (!MainWindow.closing);
+            })
+            { 
+                IsBackground = true,
+              Name = "Fill.Buffer"
+            };
         }
         public void Stop(bool stopDeviceOut = false)
         {
