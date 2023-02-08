@@ -34,16 +34,10 @@ namespace AudioWave
         private bool init = false;
         public MainWindow()
         {
-            DateTime previous = (DateTime)Properties.Settings.Default["previous"];
-            DateTime week = previous + TimeSpan.FromDays(7);
-            if (previous.CompareTo(week) > 0)
+            if (System.Windows.MessageBox.Show("Program version check for new updates.", "Prompt", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
-                Properties.Settings.Default["previous"] = DateTime.Now;
-                if (System.Windows.MessageBox.Show("Program version check for new updates.", "Prompt", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
-                {
-                    ProcessStartInfo info = new ProcessStartInfo(".\\UpdateClient.exe", $"--version 1.0.3 --targetexe AudioWave --updateurl https://github.com/ReDuzed/AudioWave/releases/download/ --changelogurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/changelog --versionurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/version --zipname audio.wave-v --processid {Process.GetCurrentProcess().Id}");
-                    update = Process.Start(info);
-                }
+                ProcessStartInfo info = new ProcessStartInfo(".\\UpdateClient.exe", $"--version 1.0.3 --targetexe AudioWave --updateurl https://github.com/ReDuzed/AudioWave/releases/download/ --changelogurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/changelog --versionurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/version --zipname audio.wave-v --processid {Process.GetCurrentProcess().Id}");
+                update = Process.Start(info);
             }
             InitializeComponent();
             Instance = this;
@@ -97,8 +91,8 @@ namespace AudioWave
             {
                 try
                 {
-                    this.Top = (double)Properties.Settings.Default["top"];
-                    this.Left = (double)Properties.Settings.Default["left"];
+                    this.Top = 400d;
+                    this.Left = 300d;
                     side = new SideWindow();
                     side.Show();
                     aux = new AuxWindow();
@@ -116,9 +110,6 @@ namespace AudioWave
                 }
                 init = true;
             }
-            Properties.Settings.Default["top"] = this.Top;
-            Properties.Settings.Default["left"] = this.Left;
-            Properties.Settings.Default.Save();
         }
     }
     public class Wave

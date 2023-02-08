@@ -356,7 +356,7 @@ namespace AudioWave
             BufferedWaveProvider buff = null;
             if (isMp3)
             {
-                using (Mp3FileReader read = new Mp3FileReader(Playlist[current], wf => new DmoMp3FrameDecompressor(wf)))
+                using (Mp3FileReader read = new Mp3FileReader(Playlist[current]))
                 {
                     buff = new BufferedWaveProvider(_format)
                     {
@@ -372,7 +372,7 @@ namespace AudioWave
         }
         private void DecompressMp3IntoFile(string file)
         {
-            using (Mp3FileReader read = new Mp3FileReader(Playlist[current], wf => new DmoMp3FrameDecompressor(wf)))
+            using (Mp3FileReader read = new Mp3FileReader(Playlist[current]))
             {
                 Window.wave.Stop();
                 WaveFileWriter.CreateWaveFile16(file, read.ToSampleProvider());
@@ -381,7 +381,7 @@ namespace AudioWave
         private WaveFileReader DecompressMp3IntoReader(string file, string outputFile = "_audio.wav")
         {
             bool success = false;
-            using (Mp3FileReader read = new Mp3FileReader(file, wf => new DmoMp3FrameDecompressor(wf)))
+            using (Mp3FileReader read = new Mp3FileReader(file))
             {
                 Window.wave.Stop();
                 WaveFileWriter.CreateWaveFile16(outputFile, read.ToSampleProvider());
@@ -397,7 +397,7 @@ namespace AudioWave
             Window.wave.Stop();
             bool success = false;
             MemoryStream mem = new MemoryStream();
-            using (Mp3FileReader read = new Mp3FileReader(file, wf => new DmoMp3FrameDecompressor(wf)))
+            using (Mp3FileReader read = new Mp3FileReader(file))
             {
                 if (resample)
                 {
