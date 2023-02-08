@@ -9,7 +9,6 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Forms;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
@@ -33,7 +32,6 @@ namespace AudioWave
         public static bool RenderColor = true;
         private Process update;
         private bool init = false;
-        public static bool closing = false;
         public MainWindow()
         {
             DateTime previous = (DateTime)Properties.Settings.Default["previous"];
@@ -41,8 +39,8 @@ namespace AudioWave
             if (previous.CompareTo(week) > 0)
             {
                 Properties.Settings.Default["previous"] = DateTime.Now;
-                if (System.Windows.MessageBox.Show("Program version check for new updates.", "Prompt", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes) 
-                { 
+                if (System.Windows.MessageBox.Show("Program version check for new updates.", "Prompt", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                {
                     ProcessStartInfo info = new ProcessStartInfo(".\\UpdateClient.exe", $"--version 1.0.3 --targetexe AudioWave --updateurl https://github.com/ReDuzed/AudioWave/releases/download/ --changelogurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/changelog --versionurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/version --zipname audio.wave-v --processid {Process.GetCurrentProcess().Id}");
                     update = Process.Start(info);
                 }
@@ -128,8 +126,7 @@ namespace AudioWave
         internal WaveFileReader reader;
         private float[] data;
         private MainWindow Window;
-        internal BufferOut audioOut;
-        internal static int Index = 0;
+        internal WasapiOut audioOut;
         public static MMDevice defaultOutput;
         public static MMDevice defaultInput;
         public WasapiCapture capture;
@@ -170,7 +167,7 @@ namespace AudioWave
         {
             if (audioOut != null)
             {
-                audioOut.UnregisterPlaybackStopped(MainWindow.Instance.side.On_PlaybackStopped);
+                audioOut.PlaybackStopped -= MainWindow.Instance.side.On_PlaybackStopped;
                 audioOut.Stop();
             }
             if (stopDeviceOut)
@@ -193,28 +190,18 @@ namespace AudioWave
         }
         public void Init(Stream stream, MMDevice output)
         {
-            BufferOut.Initialized[Index % 2] = true;
-            BufferOut.Initialized[++Index % 2] = false;
             stream.Position = 0;
             _Init(new WaveFileReader(stream), output);
-        }
-        public void Init(Stream[] stream, MMDevice output)
-        {
-            Array.ForEach(stream, (t) => 
-            { 
-                t.Position = 0;
-                _Init(new WaveFileReader(stream[Index++]), output);
-            });
         }
         public void Init(BufferedWaveProvider buff, MMDevice output)
         {
             data = _Buffer(0);
             if (audioOut != null)
             {
-                audioOut.UnregisterPlaybackStopped(MainWindow.Instance.side.On_PlaybackStopped);
+                audioOut.PlaybackStopped -= MainWindow.Instance.side.On_PlaybackStopped;
                 audioOut.Dispose();
-                audioOut = new BufferOut(output, AudioClientShareMode.Shared, true, 0);
-                audioOut.RegisterPlaybackStopped(MainWindow.Instance.side.On_PlaybackStopped);
+                audioOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
+                audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
                 audioOut.Init(buff);
                 audioOut.Play();
             }
@@ -223,13 +210,15 @@ namespace AudioWave
         {
             reader = read;
             data = _Buffer(0);
-            if (audioOut == null)
+            if (audioOut != null)
             {
-                audioOut = new BufferOut(output, AudioClientShareMode.Shared, false, 0);
-                audioOut.RegisterPlaybackStopped(MainWindow.Instance.side.On_PlaybackStopped);
+                audioOut.PlaybackStopped -= MainWindow.Instance.side.On_PlaybackStopped;
+                audioOut.Dispose();
             }
-            audioOut.Init(reader, (Index - 1) % 2);
-            audioOut.Play((Index - 1) % 2);
+            audioOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
+            audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
+            audioOut.Init(reader);
+            audioOut.Play();
         }
         public WaveRecorder record;
         public void InitAux(MMDevice output)
