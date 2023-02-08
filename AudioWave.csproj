@@ -103,6 +103,7 @@
       <DependentUpon>AuxWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Decompressor.cs" />
+    <Compile Include="MemoryOut.cs" />
     <Compile Include="RIFF.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="SideWindow.xaml.cs">

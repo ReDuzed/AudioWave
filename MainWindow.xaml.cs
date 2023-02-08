@@ -55,9 +55,8 @@ namespace AudioWave
 
         internal void On_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            closing = true;
             if (update != null)
-            { 
+            {
                 update.CloseMainWindow();
                 update.Close();
             }
@@ -129,13 +128,12 @@ namespace AudioWave
         internal WaveFileReader reader;
         private float[] data;
         private MainWindow Window;
-        internal WasapiOut audioOut;
+        internal BufferOut audioOut;
+        internal static int Index = 0;
         public static MMDevice defaultOutput;
         public static MMDevice defaultInput;
         public WasapiCapture capture;
         public BufferedWaveProvider buffer;
-        public static BufferedWaveProvider playbackBuffer;
-        public static WaveFormat playbackFormat => defaultOutput.AudioClient.MixFormat;
         public bool monitor, once;
         public WasapiOut monitorOut;
         internal static int width = 1;
@@ -155,7 +153,7 @@ namespace AudioWave
             meter = new Square[(int)Window.Width / MeterSize];
             int num = MeterSize;
             for (int i = 0; i < meter.Length; i++)
-            { 
+            {
                 meter[i] = Square.NewSquare(num += MeterSize, (int)Window.Height / 2, MeterSize, (int)Window.Height, 1f, 1d, 1f, Color.White);
             }
             square = new Square[(int)Window.Width / SquareSize];
@@ -168,12 +166,11 @@ namespace AudioWave
             LoopCapture = new WasapiLoopbackCapture(WasapiLoopbackCapture.GetDefaultLoopbackCaptureDevice());
             LoopCapture.DataAvailable += LoopCapture_DataAvailable;
         }
-        
         public void Stop(bool stopDeviceOut = false)
         {
             if (audioOut != null)
             {
-                audioOut.PlaybackStopped -= MainWindow.Instance.side.On_PlaybackStopped;
+                audioOut.UnregisterPlaybackStopped(MainWindow.Instance.side.On_PlaybackStopped);
                 audioOut.Stop();
             }
             if (stopDeviceOut)
@@ -196,35 +193,43 @@ namespace AudioWave
         }
         public void Init(Stream stream, MMDevice output)
         {
+            BufferOut.Initialized[Index % 2] = true;
+            BufferOut.Initialized[++Index % 2] = false;
             stream.Position = 0;
             _Init(new WaveFileReader(stream), output);
+        }
+        public void Init(Stream[] stream, MMDevice output)
+        {
+            Array.ForEach(stream, (t) => 
+            { 
+                t.Position = 0;
+                _Init(new WaveFileReader(stream[Index++]), output);
+            });
         }
         public void Init(BufferedWaveProvider buff, MMDevice output)
         {
             data = _Buffer(0);
-            if (audioOut == null || defaultOutput != output)
+            if (audioOut != null)
             {
-                //audioOut.PlaybackStopped -= MainWindow.Instance.side.On_PlaybackStopped;
-                //audioOut.Dispose();
-                audioOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
-                audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
+                audioOut.UnregisterPlaybackStopped(MainWindow.Instance.side.On_PlaybackStopped);
+                audioOut.Dispose();
+                audioOut = new BufferOut(output, AudioClientShareMode.Shared, true, 0);
+                audioOut.RegisterPlaybackStopped(MainWindow.Instance.side.On_PlaybackStopped);
                 audioOut.Init(buff);
+                audioOut.Play();
             }
-            audioOut.Play();
         }
         private void _Init(WaveFileReader read, MMDevice output)
         {
             reader = read;
             data = _Buffer(0);
-            if (audioOut != null)
+            if (audioOut == null)
             {
-                audioOut.PlaybackStopped -= MainWindow.Instance.side.On_PlaybackStopped;
-                audioOut.Dispose();
+                audioOut = new BufferOut(output, AudioClientShareMode.Shared, false, 0);
+                audioOut.RegisterPlaybackStopped(MainWindow.Instance.side.On_PlaybackStopped);
             }
-            audioOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
-            audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
-            audioOut.Init(reader);
-            audioOut.Play();
+            audioOut.Init(reader, (Index - 1) % 2);
+            audioOut.Play((Index - 1) % 2);
         }
         public WaveRecorder record;
         public void InitAux(MMDevice output)
@@ -500,7 +505,7 @@ namespace AudioWave
                         pen.Width = Math.Min(Math.Max(Wave.width, 1), 12);
                         if (AuxWindow.SquareStyle) { }
                         else
-                        { 
+                        {
                             if (AuxWindow.CircularStyle)
                                 graphic.DrawLines(pen, points);
                             else graphic.DrawCurve(pen, points);
@@ -537,16 +542,14 @@ namespace AudioWave
         }
         private float[] _Buffer(int length)
         {
-            //          reader != null)
-            if (playbackBuffer != null)
+            if (reader != null)
             {
                 try
                 {
                     long position = reader == null ? 0 : reader.Position;
                     float[] buffer = new float[length];
-                    playbackBuffer?.ToSampleProvider()?.Read(buffer, 0, buffer.Length);
-                    //reader?.ToSampleProvider()?.Read(buffer, 0, buffer.Length);
-                    //reader.Position = position;
+                    reader?.ToSampleProvider()?.Read(buffer, 0, buffer.Length);
+                    reader.Position = position;
                     return buffer;
                 }
                 catch
@@ -608,7 +611,7 @@ namespace AudioWave
                 {
                     num2++;
                     if (num2 < square.Length)
-                    { 
+                    {
                         float h = radius / 3f * (data[i] + 1);
                         Square.SetAmplitude(square[num2], h / (height / 2));
                         Square.Update(square[num2]);

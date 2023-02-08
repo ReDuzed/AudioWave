@@ -42,7 +42,7 @@ namespace AudioWave
             Window = MainWindow.Instance;
             Owner = Window;
             Instance = this;
-            Wave.Instance.audioOut = new WasapiOut(Wave.defaultOutput, AudioClientShareMode.Shared, false, 0);
+            Wave.Instance.audioOut = new BufferOut(Wave.defaultOutput, AudioClientShareMode.Shared, false, 0);
         }
         public void On_PlaybackStopped(object sender, StoppedEventArgs e)
         {
@@ -50,7 +50,7 @@ namespace AudioWave
             if (looping)
             {
                 Window.wave.reader.Seek(0, System.IO.SeekOrigin.Begin);
-                Wave.Instance.audioOut.Play();
+                Wave.Instance.audioOut.Play(Wave.Index);
                 return;
             }
             if (playing)
@@ -61,7 +61,10 @@ namespace AudioWave
                     //WriteCurrent(Playlist[index]);
                     //halt = true;
                     playlist.SelectedIndex = current;
-                    On_Play(sender, null);
+                    if (!BufferOut.Initialized[Wave.Index])
+                    { 
+                        On_Play(sender, null);
+                    }
                 }
                 else
                 {
@@ -215,7 +218,9 @@ namespace AudioWave
                 next[i].memory = memory;
                 readList.RemoveAt(next[i].index);
                 readList.Insert(next[i].index, next[i]);
-            }
+            }                                         
+            //  Preload next track
+            Window.wave.Init(next[1].memory, Wave.defaultOutput);
             var _list = next.ToList();
         }
         private void PreLoadHandler(ListBoxItem item)
