@@ -139,6 +139,7 @@ namespace AudioWave
                 if (list.Items[list.SelectedIndex].ToString().Contains(a.FriendlyName))
                 {
                     Wave.defaultOutput = a;
+                    Wave.format = new WaveFormat(a.AudioClient.MixFormat.SampleRate, a.AudioClient.MixFormat.Channels);
                     return;
                 }
             }

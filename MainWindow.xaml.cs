@@ -1,6 +1,7 @@
 ﻿using NAudio.CoreAudioApi;
 using NAudio.Dsp;
 using NAudio.Wave;
+using NAudio.Wave.SampleProviders;
 using System;
 using System.Diagnostics;
 using System.Drawing;
@@ -43,6 +44,8 @@ namespace AudioWave
             Instance = this;
             wave = new Wave();
             Wave.defaultOutput = new MMDeviceEnumerator().GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            Wave.format = Wave.defaultOutput.AudioClient.MixFormat;
+            Wave.Instance.mixer = new MixingSampleProvider(WaveFormat.CreateIeeeFloatWaveFormat(Wave.format.SampleRate, Wave.format.Channels));
         }
 
         internal void On_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -120,13 +123,14 @@ namespace AudioWave
         internal WasapiOut audioOut;
         public static MMDevice defaultOutput;
         public static MMDevice defaultInput;
+        public static WaveFormat format;
         public WasapiCapture capture;
         public BufferedWaveProvider buffer;
         public bool monitor, once;
         public WasapiOut monitorOut;
         internal static int width = 1;
         internal static Wave Instance;
-        internal MixingWaveProvider32 mixer = new MixingWaveProvider32();
+        internal MixingSampleProvider mixer;
         internal Square[] meter;
         internal Square[] square;
         internal const int MeterSize = 10;
@@ -197,7 +201,7 @@ namespace AudioWave
                 audioOut.Play();
             }
         }
-        private void _Init(WaveFileReader read, MMDevice output)
+        private void _Init(WaveFileReader read, MMDevice output, bool flag)
         {
             reader = read;
             data = _Buffer(0);
@@ -209,6 +213,45 @@ namespace AudioWave
             audioOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
             audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
             audioOut.Init(reader);
+            audioOut.Play();
+        }
+        private void _Init(WaveStream read, MMDevice output)
+        {
+            reader = (WaveFileReader)read;
+            data = _Buffer(0);
+            if (audioOut != null)
+            {
+                audioOut.PlaybackStopped -= MainWindow.Instance.side.On_PlaybackStopped;
+                audioOut.Dispose();
+                audioOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
+                audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
+            }
+            else
+            {
+                audioOut = new WasapiOut(output, AudioClientShareMode.Shared, false, 0);
+                audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
+            }
+            audioOut.Init(read);
+            audioOut.Play();
+        }
+        public void Init(MixingSampleProvider mixer)
+        {
+            mixer.ReadFully = true;
+            this.mixer = mixer;
+            data = _Buffer(0);
+            if (audioOut != null)
+            {
+                audioOut.PlaybackStopped -= MainWindow.Instance.side.On_PlaybackStopped;
+                audioOut.Dispose();
+                audioOut = new WasapiOut(defaultOutput, AudioClientShareMode.Shared, false, 0);
+                audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
+            }
+            else
+            {
+                audioOut = new WasapiOut(defaultOutput, AudioClientShareMode.Shared, false, 0);
+                audioOut.PlaybackStopped += MainWindow.Instance.side.On_PlaybackStopped;
+            }
+            audioOut.Init(mixer);
             audioOut.Play();
         }
         public WaveRecorder record;
@@ -355,7 +398,7 @@ namespace AudioWave
             {
                 if (flag) return;
                 flag = true;
-                if (reader != null && audioOut.PlaybackState == PlaybackState.Playing || capture != null && capture.CaptureState == CaptureState.Capturing || LoopCapture != null && LoopCapture.CaptureState == CaptureState.Capturing)
+                if (mixer != null && audioOut.PlaybackState == PlaybackState.Playing || capture != null && capture.CaptureState == CaptureState.Capturing || LoopCapture != null && LoopCapture.CaptureState == CaptureState.Capturing)
                     GenerateImage();
                 flag = false;
             };
@@ -394,7 +437,7 @@ namespace AudioWave
                         length += indexArray[2];
 
                     PointF[] points = new PointF[width];
-                    if ((capture != null && capture.CaptureState != CaptureState.Capturing) || (reader != null && audioOut.PlaybackState == PlaybackState.Playing))
+                    if ((capture != null && capture.CaptureState != CaptureState.Capturing) || (mixer != null && audioOut.PlaybackState == PlaybackState.Playing))
                     {
                         for (int i = 0; i < points.Length; i += points.Length / Math.Max(length, 1))
                         {
@@ -458,7 +501,7 @@ namespace AudioWave
                             }
                         }
                     }
-                    else if (reader == null)
+                    else if (mixer == null)
                     {
                         //data = LiveBuffer();
                         //for (int i = 0; i < points.Length; i += points.Length / Math.Max(length, 1))
@@ -522,14 +565,16 @@ namespace AudioWave
         }
         private float[] _Buffer(int length)
         {
-            if (reader != null)
+            if (mixer != null)
             {
                 try
                 {
-                    long position = reader == null ? 0 : reader.Position;
+                    //long position = reader == null ? 0 : reader.Position;
                     float[] buffer = new float[length];
-                    reader?.ToSampleProvider()?.Read(buffer, 0, buffer.Length);
-                    reader.Position = position;
+                    var array = (ISampleProvider[])mixer.MixerInputs.ToArray().Clone();
+                    array[0].Read(buffer, 0, buffer.Length);
+                    //reader?.ToSampleProvider()?.Read(buffer, 0, buffer.Length);
+                    //reader.Position = position;
                     return buffer;
                 }
                 catch

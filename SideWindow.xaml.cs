@@ -1,4 +1,11 @@
-﻿using System;
+﻿using AudioWave.Seamless;
+using NAudio.CoreAudioApi;
+using NAudio.Dmo;
+using NAudio.FileFormats.Mp3;
+using NAudio.Wave;
+using NAudio.Wave.Compression;
+using NAudio.Wave.SampleProviders;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,12 +20,6 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
-using NAudio.CoreAudioApi;
-using NAudio.Dmo;
-using NAudio.FileFormats.Mp3;
-using NAudio.Wave;
-using NAudio.Wave.Compression;
-
 namespace AudioWave
 {
     /// <summary>
@@ -28,7 +29,7 @@ namespace AudioWave
     {
         public static SideWindow Instance;
         private MainWindow Window;
-        private int current;
+        public static int current;
         private bool playing;
         private bool looping;
         internal bool toggled;
@@ -46,6 +47,9 @@ namespace AudioWave
         }
         public void On_PlaybackStopped(object sender, StoppedEventArgs e)
         {
+            Wave.Instance.audioOut?.Stop();
+            playing = false;
+            return; // DEBUG testing continuous playback
             //if (halt) return;
             if (looping)
             {
@@ -92,19 +96,24 @@ namespace AudioWave
             dialog.ShowDialog();
             string[] files = dialog.SafeFileNames;
             string[] fullPath = dialog.FileNames;
+            FillPlaylist(files, fullPath);
+            dialog.Dispose();
+        }
+        void FillPlaylist(string[] files, string[] fullPath)
+        {
+            int offset = 0;
             if (files.Length > 0)
             {
                 for (int i = 0; i < files.Length; i++)
                 {
-                    Playlist.Add(dialog.FileNames[i]);
+                    Playlist.Add(fullPath[i]);
                     var item = new ListBoxItem();
                     item.Content = files[i].Substring(0, files[i].Length - 4);
                     item.MouseDoubleClick += Item_MouseDoubleClick;
                     playlist.Items.Add(item);
-
+                    continue;
                     string ext = files[i].Substring(files[i].Length - 4);
                     #region LEGACY Preloading all tracks
-                    /*
                     MemoryStream memory = null;
                     if (files[i].EndsWith(".mp3"))
                     {
@@ -114,10 +123,32 @@ namespace AudioWave
                     {
                         memory = new MemoryStream();
                         var wfr = new WaveFileReader(fullPath[i]);
-                        WaveFileWriter.WriteWavFileToStream(memory, wfr);
+                        bool resample = true;
+                    RECOURSE:
+                        if (resample)
+                        {
+                            try
+                            {
+                                var wfc = Resample(wfr);
+                                WaveFileWriter.WriteWavFileToStream(memory, wfc);
+                                wfc.Dispose();
+                            }
+                            catch
+                            {
+                                resample = false;
+                                goto RECOURSE;
+                            }
+                        }
+                        else
+                        {
+                            WaveFileWriter.WriteWavFileToStream(memory, wfr);
+                        }
                         wfr.Dispose();
-                    } */
+                    }
+                    //entirePlaylist.Write(memory.GetBuffer(), offset, (int)memory.Length);
+                    offset += (int)memory.Length;
                     #endregion
+                    continue;
                     var data = AudioData.NewAudioData(i, SafeFileName(fullPath[i]), fullPath[i], ext, null);
                     if (!readList.Contains(data))
                     {
@@ -126,7 +157,6 @@ namespace AudioWave
                     //PreLoadHandler((ListBoxItem)playlist.Items[0]);
                 }
             }
-            dialog.Dispose();
         }
         WaveFormatConversionProvider Resample(IWaveProvider wave, int samplerate = 44100)
         {
@@ -267,8 +297,11 @@ namespace AudioWave
             int index = playlist.SelectedIndex;
             if (index != -1)
             {
-                readList[index].memory?.Dispose();
-                readList.RemoveAt(index);
+                if (index < readList.Count)
+                { 
+                    readList[index].memory?.Dispose();
+                    readList.RemoveAt(index);
+                }
                 ((ListBoxItem)playlist.Items[index]).MouseDoubleClick -= Item_MouseDoubleClick;
                 Playlist.RemoveAt(index);
                 playlist.Items.RemoveAt(index);
@@ -283,6 +316,9 @@ namespace AudioWave
             current = playlist.SelectedIndex == -1 ? 0 : playlist.SelectedIndex;
             if (Playlist.Count <= 0) return;
 
+            Window.wave.Init(Concat.RunMixer(current, Playlist.ToArray(), Wave.format));
+            #region legacy
+            return; // DEBUG testing continuous playback
             AudioData data = default;
             for (int i = 0; i < Playlist.Count; i++)
             {
@@ -324,7 +360,7 @@ namespace AudioWave
                 }
             }
             return;
-            #region legacy
+            //  LEGACY
             AuxWindow.Instance.check_loopback.IsChecked = false;
             playing = true;
             toggled = true;
@@ -513,9 +549,11 @@ namespace AudioWave
             for (int i = 0; i < playlist.Items.Count; i++)
             {
                 ((ListBoxItem)playlist.Items[i]).MouseDoubleClick -= Item_MouseDoubleClick;
-                readList[i].memory?.Dispose();
+                if (i < readList.Count)
+                { 
+                    readList[i].memory?.Dispose();
+                }
             }
-
             playlist.Items.Clear();
             Playlist.Clear();
             readList.Clear();
@@ -627,21 +665,7 @@ namespace AudioWave
             }
             if (files.Length > 0)
             {
-                for (int i = 0; i < files.Length; i++)
-                {
-                    Playlist.Add(fullPath[i]);
-                    var item = new ListBoxItem();
-                    item.Content = files[i].Substring(0, files[i].Length - 4);
-                    item.MouseDoubleClick += Item_MouseDoubleClick;
-                    playlist.Items.Add(item);
-
-                    string ext = files[i].Substring(files[i].Length - 4);
-                    var data = AudioData.NewAudioData(i, SafeFileName(fullPath[i]), fullPath[i], ext, null);
-                    if (!readList.Contains(data))
-                    {
-                        readList.Add(data);
-                    }
-                }
+                FillPlaylist(files, fullPath);
             }
         }
     }
