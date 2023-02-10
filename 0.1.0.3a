@@ -1,6 +1,0 @@
-alpha rc3 -> alpha 0.1.0.3a
-# Added
--> Preloading and unloading while tracks are playing or when started
-# Changed
--> Shuffling now supports preloading
--> Coordinate correction
