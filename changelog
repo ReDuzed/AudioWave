@@ -1,6 +1,7 @@
-1.0b -> 1.0.3
+1.0b -> 1.0c
 # Added
 -> Meter graphic style
--> Song files draggable onto playlist for quickly loading
 # Fixed
 -> Update racing condition
+-> Update dialog now prompts less often
+-> Crash upon startup
