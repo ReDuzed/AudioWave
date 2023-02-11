@@ -35,13 +35,12 @@ namespace AudioWave
         public MainWindow()
         {
             DateTime previous = (DateTime)Properties.Settings.Default["previous"];
-            DateTime week = previous + TimeSpan.FromDays(7);
-            if (previous.CompareTo(week) > 0)
+            if (DateTime.Now.CompareTo(previous) > 0)
             {
-                Properties.Settings.Default["previous"] = DateTime.Now;
+                Properties.Settings.Default["previous"] = DateTime.Now + TimeSpan.FromDays(3);
                 if (System.Windows.MessageBox.Show("Program version check for new updates.", "Prompt", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 {
-                    ProcessStartInfo info = new ProcessStartInfo(".\\UpdateClient.exe", $"--version 1.0.3 --targetexe AudioWave --updateurl https://github.com/ReDuzed/AudioWave/releases/download/ --changelogurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/changelog --versionurl https://raw.githubusercontent.com/ReDuzed/AudioWave/dev/version --zipname audio.wave-v --processid {Process.GetCurrentProcess().Id}");
+                    ProcessStartInfo info = new ProcessStartInfo(".\\UpdateClient.exe", $"--version 1.0.4 --targetexe AudioWave --updateurl https://circleprefect.com/download/AudioWave/Releases/ --changelogurl https://circleprefect.com/download/AudioWave/changelog --versionurl https://circleprefect.com/download/AudioWave/version --zipname audio.wave-v --processid {Process.GetCurrentProcess().Id}");
                     update = Process.Start(info);
                 }
             }
@@ -53,10 +52,11 @@ namespace AudioWave
 
         internal void On_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if (update != null)
+            Properties.Settings.Default.Save();
+            if (update != null && !update.HasExited)
             {
-                update.CloseMainWindow();
-                update.Close();
+                update?.CloseMainWindow();
+                update?.Close();
             }
             wave.Stop();
             side.Close();
@@ -140,7 +140,7 @@ namespace AudioWave
         internal Square[] square;
         internal const int MeterSize = 10;
         internal const int SquareSize = 20;
-        internal Bitmap texture = (Bitmap)Bitmap.FromFile(".\\Textures\\temp90.png");
+        //internal Bitmap texture = (Bitmap)Bitmap.FromFile(".\\Textures\\temp90.png");
         public Wave()
         {
             Window = MainWindow.Instance;
@@ -153,15 +153,16 @@ namespace AudioWave
             {
                 meter[i] = Square.NewSquare(num += MeterSize, (int)Window.Height / 2, MeterSize, (int)Window.Height, 1f, 1d, 1f, Color.White);
             }
+            LoopCapture = new WasapiLoopbackCapture(WasapiLoopbackCapture.GetDefaultLoopbackCaptureDevice());
+            LoopCapture.DataAvailable += LoopCapture_DataAvailable; 
+            return;
             square = new Square[(int)Window.Width / SquareSize];
             int num2 = SquareSize;
             for (int i = 0; i < square.Length; i++)
             {
                 square[i] = Square.NewSquare(num2 += SquareSize, (int)Window.Height / 2, SquareSize, (int)Window.Height, 1f, i * (Math.PI * 2d / square.Length), 1f, Color.White);
-                square[i].texture = texture;
+                square[i].texture = null;
             }
-            LoopCapture = new WasapiLoopbackCapture(WasapiLoopbackCapture.GetDefaultLoopbackCaptureDevice());
-            LoopCapture.DataAvailable += LoopCapture_DataAvailable;
         }
         public void Stop(bool stopDeviceOut = false)
         {

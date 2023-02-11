@@ -189,9 +189,7 @@
     <Resource Include="icon_aw.ico" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Textures\temp.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <None Include="Textures\temp.png" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Textures\temp90.png" />

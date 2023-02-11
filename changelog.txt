@@ -1,4 +1,14 @@
-﻿1.0a -> 1.0b
+﻿1.0b -> 1.0c
+# Added
+-> Meter graphic style
+# Changed
+-> Automatic format conversion into IEEE float
+# Fixed
+-> Update racing condition
+-> Update dialog now prompts less often
+-> Crash upon startup
+
+1.0a -> 1.0b
 # Added
 -> Audio tracks resampled based on the chosen output device (or default)
 # Changed
@@ -6,7 +16,7 @@
 # Fixed
 -> current.txt name truncating
 
-alpha 0.1.0.6 -> 1.0
+alpha 0.1.0.6 -> 1.0a
 # Changed
 -> Pause option stops and starts
 -> Window positions are oriented at start

@@ -18,6 +18,7 @@ using NAudio.Dmo;
 using NAudio.FileFormats.Mp3;
 using NAudio.Wave;
 using NAudio.Wave.Compression;
+using NAudio.Wave.SampleProviders;
 
 namespace AudioWave
 {
@@ -155,9 +156,8 @@ namespace AudioWave
                 {
                     try
                     {
-                        var wfc = Resample(wfr);
+                        var wfc = Convert(wfr, Wave.defaultOutput.AudioClient.MixFormat);
                         WaveFileWriter.WriteWavFileToStream(memory, wfc);
-                        wfc.Dispose();
                     }
                     catch
                     {
@@ -168,12 +168,42 @@ namespace AudioWave
                 else
                 {
                     resample = true;
-                    WaveFileWriter.WriteWavFileToStream(memory, wfr);
+                    var wfc = Convert(wfr, Wave.defaultOutput.AudioClient.MixFormat);
+                    WaveFileWriter.WriteWavFileToStream(memory, wfc);
                 }
                 wfr.Dispose();
             }
             data.memory = memory;
             return true;
+        }
+        IWaveProvider Convert(IWaveProvider iwp, WaveFormat wf)
+        {
+            WaveFormatConversionProvider wfc = null;
+            Pcm8BitToSampleProvider pcm8 = null;
+            Pcm16BitToSampleProvider pcm16 = null;
+            Pcm24BitToSampleProvider pcm24 = null;
+            Pcm32BitToSampleProvider pcm32 = null;
+            switch (iwp.WaveFormat.BitsPerSample)
+            {
+                case 8:
+                    (wfc = new WaveFormatConversionProvider(new WaveFormat(wf.SampleRate, 16, wf.Channels), iwp)).Reposition();
+                    pcm8 = new Pcm8BitToSampleProvider(wfc);
+                    return pcm8.ToWaveProvider16();
+                case 16:
+                    (wfc = new WaveFormatConversionProvider(new WaveFormat(wf.SampleRate, 16, wf.Channels), iwp)).Reposition();
+                    pcm16 = new Pcm16BitToSampleProvider(wfc);
+                    return pcm16.ToWaveProvider16();
+                case 24:
+                    pcm24 = new Pcm24BitToSampleProvider(iwp);
+                    //(wfc = new WaveFormatConversionProvider(new WaveFormat(wf.SampleRate, 16, 2), pcm24.ToWaveProvider())).Reposition();
+                    return pcm24.ToWaveProvider16();
+                case 32:
+                    pcm32 = new Pcm32BitToSampleProvider(iwp);
+                    //(wfc = new WaveFormatConversionProvider(new WaveFormat(wf.SampleRate, 16, 2), pcm32.ToWaveProvider())).Reposition();
+                    return pcm32.ToWaveProvider16();
+                default:
+                    return iwp;
+            }
         }
         private void PreLoadNext(AudioData[] next)
         {
@@ -195,9 +225,8 @@ namespace AudioWave
                     {
                         try
                         {
-                            var wfc = Resample(wfr);
+                            var wfc = Convert(wfr, Wave.defaultOutput.AudioClient.MixFormat);
                             WaveFileWriter.WriteWavFileToStream(memory, wfc);
-                            wfc.Dispose();
                         }
                         catch
                         {
@@ -207,7 +236,8 @@ namespace AudioWave
                     }
                     else
                     {
-                        WaveFileWriter.WriteWavFileToStream(memory, wfr);
+                        var wfc = Convert(wfr, Wave.defaultOutput.AudioClient.MixFormat);
+                        WaveFileWriter.WriteWavFileToStream(memory, wfc);
                         resample = true;
                     }
                     wfr.Dispose();

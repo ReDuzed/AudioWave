@@ -59,12 +59,15 @@ namespace AudioWave.Properties {
             }
         }
         
-        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("2023-01-31")]
         public global::System.DateTime previous {
             get {
                 return ((global::System.DateTime)(this["previous"]));
+            }
+            set {
+                this["previous"] = value;
             }
         }
     }
